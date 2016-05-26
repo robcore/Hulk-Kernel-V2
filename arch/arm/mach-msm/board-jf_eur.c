@@ -308,7 +308,7 @@ static void max77693_haptic_power_onoff(int onoff)
 			printk(KERN_ERR"enable l8 failed, rc=%d\n", ret);
 			return;
 		}
-		printk(KERN_DEBUG"haptic power_on is finished.\n");
+		//printk(KERN_DEBUG"haptic power_on is finished.\n");
 	} else {
 		if (regulator_is_enabled(reg_l8)) {
 			ret = regulator_disable(reg_l8);
@@ -318,7 +318,7 @@ static void max77693_haptic_power_onoff(int onoff)
 				return;
 			}
 		}
-		printk(KERN_DEBUG"haptic power_off is finished.\n");
+		//printk(KERN_DEBUG"haptic power_off is finished.\n");
 	}
 }
 #endif
@@ -3259,9 +3259,9 @@ static struct msm_thermal_data msm_thermal_pdata = {
 	.sensor_id = 7,
 	.poll_ms = 250,
 #ifdef CONFIG_CPU_OVERCLOCK
-	.limit_temp_degC = 80,
-#else
 	.limit_temp_degC = 70,
+#else
+	.limit_temp_degC = 60,
 #endif
 	.temp_hysteresis_degC = 10,
 	.freq_step = 2,
@@ -3269,9 +3269,9 @@ static struct msm_thermal_data msm_thermal_pdata = {
 	.freq_control_mask = 0xf,
 #endif
 #ifdef CONFIG_CPU_OVERCLOCK
-	.core_limit_temp_degC = 90,
-#else
 	.core_limit_temp_degC = 80,
+#else
+	.core_limit_temp_degC = 70,
 #endif
 	.core_temp_hysteresis_degC = 10,
 	.core_control_mask = 0xe,

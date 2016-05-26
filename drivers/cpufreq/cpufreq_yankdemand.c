@@ -35,15 +35,15 @@
 
 #define DEF_SAMPLING_RATE				(50000)	/* Yank555.lu : new */
 #define DEF_FREQUENCY_DOWN_DIFFERENTIAL			(10)
-#define DEF_FREQUENCY_UP_THRESHOLD			(95)	/* Yank555.lu : was 80 */
-#define DEF_FREQUENCY_UP_THRESHOLD_ANY_CPU_LOAD		(90)	/* Yank555.lu : new */
+#define DEF_FREQUENCY_UP_THRESHOLD			(90)	/* Yank555.lu : was 80 */
+#define DEF_FREQUENCY_UP_THRESHOLD_ANY_CPU_LOAD		(85)	/* Yank555.lu : new */
 #define DEF_FREQUENCY_UP_THRESHOLD_MULTI_CORE		(80)	/* Yank555.lu : new */
 #define DEF_SAMPLING_DOWN_FACTOR			(2)	/* Yank555.lu : was 1 */
 #define MAX_SAMPLING_DOWN_FACTOR			(100000)
-#define DEF_INPUT_BOOST					(652800)/* Yank555.lu : new */
+#define DEF_INPUT_BOOST					(810000)/* Yank555.lu : new */
 #define DEF_IO_IS_BUSY					(1)	/* Yank555.lu : new */
-#define DEF_OPTIMAL_FREQUENCY				(960000)/* Yank555.lu : new */
-#define DEF_SYNC_FREQUENCY				(883200)/* Yank555.lu : new */
+#define DEF_OPTIMAL_FREQUENCY				(1134000)/* Yank555.lu : new */
+#define DEF_SYNC_FREQUENCY				(702000)/* Yank555.lu : new */
 #define MICRO_FREQUENCY_DOWN_DIFFERENTIAL		(3)
 #define MICRO_FREQUENCY_DOWN_DIFFERENTIAL_MULTI_CORE	(3)	/* Yank555.lu : new */
 #define MICRO_FREQUENCY_UP_THRESHOLD			(95)
@@ -55,8 +55,8 @@
 #define STEP_UP
 #ifdef STEP_UP
 #define DEF_FREQ_STEP					(25)
-#define DEF_STEP_UP_EARLY_HISPEED			(652800)  /* Yank555.lu : was 1190400 */
-#define DEF_STEP_UP_INTERIM_HISPEED			(1190400) /* Yank555.lu : was 1728000 */
+#define DEF_STEP_UP_EARLY_HISPEED			(1350000)  /* Yank555.lu : was 1190400 */
+#define DEF_STEP_UP_INTERIM_HISPEED			(1566000) /* Yank555.lu : was 1728000 */
 #define DEF_SAMPLING_EARLY_HISPEED_FACTOR		(2)
 #define DEF_SAMPLING_INTERIM_HISPEED_FACTOR		(3)
 #endif
@@ -88,8 +88,8 @@ freq_table_idx yank_pre_freq_idx[SUP_CORE_NUM] = {};
 
 #if defined(SMART_UP_SLOW_UP_AT_HIGH_FREQ)
 
-#define SUP_SLOW_UP_FREQUENCY 		(883200)  /* Yank555.lu : was 1574400 */
-#define SUP_HIGH_SLOW_UP_FREQUENCY 	(1190400) /* Yank555.lu : was 1728000 */
+#define SUP_SLOW_UP_FREQUENCY 		(810000)  /* Yank555.lu : was 1574400 */
+#define SUP_HIGH_SLOW_UP_FREQUENCY 	(1566000) /* Yank555.lu : was 1728000 */
 #define SUP_SLOW_UP_LOAD 		(95)      /* Yank555.lu : was 90 */
 
 typedef struct {

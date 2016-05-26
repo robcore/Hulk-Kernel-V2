@@ -80,7 +80,7 @@ static freq_table_idx pre_freq_idx[SUP_CORE_NUM] = {};
 
 #if defined(SMART_UP_SLOW_UP_AT_HIGH_FREQ)
 
-#define SUP_SLOW_UP_FREQUENCY			(1566000)
+#define SUP_SLOW_UP_FREQUENCY			(1350000)
 #define SUP_HIGH_SLOW_UP_FREQUENCY		(1890000)
 #define SUP_SLOW_UP_LOAD			(75)
 
@@ -209,7 +209,7 @@ static struct dbs_tuners {
 	.up_threshold_any_cpu_load = DEF_FREQUENCY_UP_THRESHOLD,
 	.ignore_nice = 0,
 	.powersave_bias = 0,
-	.sync_freq = 1566000,
+	.sync_freq = 810000,
 	.optimal_freq = 1566000,
 	/* 20130711 smart_up */
 	.smart_up = SMART_UP_PLUS,

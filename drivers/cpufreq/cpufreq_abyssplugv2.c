@@ -69,10 +69,10 @@ static void do_bds_timer(struct work_struct *work);
 static int cpufreq_governor_bds(struct cpufreq_policy *policy,
 				unsigned int event);
 
-#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_ABYSSPLUG
+#ifndef CONFIG_CPU_FREQ_DEFAULT_GOV_ABYSSPLUGV2
 static
 #endif
-struct cpufreq_governor cpufreq_gov_abyssplug = {
+struct cpufreq_governor cpufreq_gov_abyssplugv2 = {
        .name                   = "abyssplugv2",
        .governor               = cpufreq_governor_bds,
        .max_transition_latency = TRANSITION_LATENCY_LIMIT,
@@ -990,12 +990,12 @@ static int __init cpufreq_gov_bds_init(void)
 		INIT_WORK(&per_cpu(bds_refresh_work, i), bds_refresh_callback);
 	}
 
-	return cpufreq_register_governor(&cpufreq_gov_abyssplug);
+	return cpufreq_register_governor(&cpufreq_gov_abyssplugv2);
 }
 
 static void __exit cpufreq_gov_bds_exit(void)
 {
-	cpufreq_unregister_governor(&cpufreq_gov_abyssplug);
+	cpufreq_unregister_governor(&cpufreq_gov_abyssplugv2);
 	destroy_workqueue(input_wq);
 }
 
@@ -1018,7 +1018,7 @@ MODULE_AUTHOR("Alexey Starikovskiy <alexey.y.starikovskiy@intel.com>");
 MODULE_AUTHOR("Dennis Rassmann <showp1984@gmail.com>");
 MODULE_DESCRIPTION("'cpufreq_abyssplugv2' - An abyssplug cpufreq governor based on ondemand");
 
-#ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_ABYSSPLUG
+#ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_ABYSSPLUGV2
 fs_initcall(cpufreq_gov_bds_init);
 #else
 module_init(cpufreq_gov_bds_init);

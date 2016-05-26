@@ -18,7 +18,7 @@ make clean;
 make distclean;
 make mrproper;
 mkdir $(pwd)/out;
-cp $(pwd)/arch/arm/configs/AEL_config $(pwd)/out/.config;
+cp $(pwd)/arch/arm/configs/OK3_defconfig $(pwd)/out/.config;
 make ARCH=arm -j7 O=$(pwd)/out oldconfig;
 make ARCH=arm -S -s -j7 O=$(pwd)/out;
 cp $(pwd)/out/arch/arm/boot/zImage $(pwd)/arch/arm/boot/zImage;
