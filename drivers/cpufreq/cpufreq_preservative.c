@@ -23,17 +23,16 @@
 
 #include "../gpu/msm/kgsl.h"
 
-#define TRANSITION_LATENCY_LIMIT		(10 * 1000 * 1000)
-#define SAMPLE_RATE			(50000)
-#define OPTIMAL_POSITION			(5)
+#define TRANSITION_LATENCY_LIMIT	(10 * 1000 * 1000)
+#define SAMPLE_RATE			(40000)
+#define OPTIMAL_POSITION		(5)
 #define TABLE_SIZE			(15)
-#define HYSTERESIS			(9)
+#define HYSTERESIS			(7)
 #define UP_THRESH			(100)
 
-static const int valid_fqs[TABLE_SIZE] = {384000, 486000, 594000
-			702000, 810000, 918000, 1134000,
-			1242000, 1350000,1458000, 1512000
-			1674000, 1782000, 1890000};
+static const int valid_fqs[TABLE_SIZE] = {384000, 486000, 594000, 702000, 810000,
+			918000, 1026000, 1134000, 1242000, 1350000,
+			1458000, 1566000, 1674000, 1782000, 1890000};
 static void do_dbs_timer(struct work_struct *work);
 
 static int thresh_adj = 0;
@@ -191,7 +190,6 @@ static int get_load(struct cpufreq_policy *policy)
 
 static void dbs_check_cpu(struct cpu_dbs_info_s *this_dbs_info)
 {
-	
 	unsigned int target_table_position = 0;
 	unsigned int max_load, freq_target, j;
 	struct cpufreq_policy *policy = this_dbs_info->cur_policy;
