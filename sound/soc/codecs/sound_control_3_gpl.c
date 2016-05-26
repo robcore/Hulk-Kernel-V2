@@ -55,25 +55,25 @@ faux sound anyhow.
 			out = &cached_regs[1];
 			break;
 */
-                case TABLA_A_CDC_RX1_VOL_CTL_B1_CTL:
+                case TABLA_A_CDC_RX1_VOL_CTL_B2_CTL:
 			out = &cached_regs[4];
 			break;
-                case TABLA_A_CDC_RX2_VOL_CTL_B1_CTL:
+                case TABLA_A_CDC_RX2_VOL_CTL_B2_CTL:
 			out = &cached_regs[5];
 			break;
-                case TABLA_A_CDC_RX3_VOL_CTL_B1_CTL:
+                case TABLA_A_CDC_RX3_VOL_CTL_B2_CTL:
 			out = &cached_regs[6];
 			break;
-                case TABLA_A_CDC_RX4_VOL_CTL_B1_CTL:
+                case TABLA_A_CDC_RX4_VOL_CTL_B2_CTL:
 			out = &cached_regs[7];
 			break;
-                case TABLA_A_CDC_RX5_VOL_CTL_B1_CTL:
+                case TABLA_A_CDC_RX5_VOL_CTL_B2_CTL:
 			out = &cached_regs[8];
 			break;
-                case TABLA_A_CDC_RX6_VOL_CTL_B1_CTL:
+                case TABLA_A_CDC_RX6_VOL_CTL_B2_CTL:
 			out = &cached_regs[9];
 			break;
-                case TABLA_A_CDC_RX7_VOL_CTL_B1_CTL:
+                case TABLA_A_CDC_RX7_VOL_CTL_B2_CTL:
 			out = &cached_regs[10];
 			break;
                 case TABLA_A_CDC_TX1_VOL_CTL_GAIN:
@@ -157,13 +157,13 @@ int snd_hax_reg_access(unsigned int reg)
 				ret = 0;
 			break;
 */
-		case TABLA_A_CDC_RX1_VOL_CTL_B1_CTL:
-		case TABLA_A_CDC_RX2_VOL_CTL_B1_CTL:
-		case TABLA_A_CDC_RX3_VOL_CTL_B1_CTL:
-		case TABLA_A_CDC_RX4_VOL_CTL_B1_CTL:
-		case TABLA_A_CDC_RX5_VOL_CTL_B1_CTL:
-		case TABLA_A_CDC_RX6_VOL_CTL_B1_CTL:
-		case TABLA_A_CDC_RX7_VOL_CTL_B1_CTL:
+		case TABLA_A_CDC_RX1_VOL_CTL_B2_CTL:
+		case TABLA_A_CDC_RX2_VOL_CTL_B2_CTL:
+		case TABLA_A_CDC_RX3_VOL_CTL_B2_CTL:
+		case TABLA_A_CDC_RX4_VOL_CTL_B2_CTL:
+		case TABLA_A_CDC_RX5_VOL_CTL_B2_CTL:
+		case TABLA_A_CDC_RX6_VOL_CTL_B2_CTL:
+		case TABLA_A_CDC_RX7_VOL_CTL_B2_CTL:
 		case TABLA_A_RX_LINE_1_GAIN:
 		case TABLA_A_RX_LINE_2_GAIN:
 		case TABLA_A_RX_LINE_3_GAIN:
@@ -256,9 +256,9 @@ static ssize_t speaker_gain_show(struct kobject *kobj,
 {
         return sprintf(buf, "%u %u\n",
 			tabla_read(fauxsound_codec_ptr,
-				TABLA_A_CDC_RX5_VOL_CTL_B1_CTL),
+				TABLA_A_CDC_RX5_VOL_CTL_B2_CTL),
 			tabla_read(fauxsound_codec_ptr,
-				TABLA_A_CDC_RX5_VOL_CTL_B1_CTL));
+				TABLA_A_CDC_RX5_VOL_CTL_B2_CTL));
 
 }
 
@@ -271,9 +271,9 @@ static ssize_t speaker_gain_store(struct kobject *kobj,
 
 	if (calc_checksum(lval, rval, chksum)) {
 		tabla_write(fauxsound_codec_ptr,
-			TABLA_A_CDC_RX5_VOL_CTL_B1_CTL, lval);
+			TABLA_A_CDC_RX5_VOL_CTL_B2_CTL, lval);
 		tabla_write(fauxsound_codec_ptr,
-			TABLA_A_CDC_RX5_VOL_CTL_B1_CTL, rval);
+			TABLA_A_CDC_RX5_VOL_CTL_B2_CTL, rval);
 	}
 	return count;
 }
@@ -283,9 +283,9 @@ static ssize_t headphone_gain_show(struct kobject *kobj,
 {
 	return sprintf(buf, "%u %u\n",
 			tabla_read(fauxsound_codec_ptr,
-				TABLA_A_CDC_RX1_VOL_CTL_B1_CTL),
+				TABLA_A_CDC_RX1_VOL_CTL_B2_CTL),
 			tabla_read(fauxsound_codec_ptr,
-				TABLA_A_CDC_RX2_VOL_CTL_B1_CTL));
+				TABLA_A_CDC_RX2_VOL_CTL_B2_CTL));
 }
 
 static ssize_t headphone_gain_store(struct kobject *kobj,
@@ -297,9 +297,9 @@ static ssize_t headphone_gain_store(struct kobject *kobj,
 
 	if (calc_checksum(lval, rval, chksum)) {
 		tabla_write(fauxsound_codec_ptr,
-			TABLA_A_CDC_RX1_VOL_CTL_B1_CTL, lval);
+			TABLA_A_CDC_RX1_VOL_CTL_B2_CTL, lval);
 		tabla_write(fauxsound_codec_ptr,
-			TABLA_A_CDC_RX2_VOL_CTL_B1_CTL, rval);
+			TABLA_A_CDC_RX2_VOL_CTL_B2_CTL, rval);
 	}
 	return count;
 }
