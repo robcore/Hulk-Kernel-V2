@@ -143,7 +143,7 @@ void snd_ak4113_reinit(struct ak4113 *chip)
 		cancel_delayed_work_sync(&chip->work);
 	ak4113_init_regs(chip);
 	/* bring up statistics / event queing */
-	if (atomic_dec_and_test(&chip->wq_processing))
+	if (atomic_dec_and_test(&chip->wq_processing)
 		schedule_delayed_work(&chip->work, HZ / 10);
 }
 EXPORT_SYMBOL_GPL(snd_ak4113_reinit);
