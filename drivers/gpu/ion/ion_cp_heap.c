@@ -28,7 +28,6 @@
 #include <linux/fmem.h>
 #include <linux/iommu.h>
 #include <linux/dma-mapping.h>
-#include <trace/events/kmem.h>
 
 #include <asm/mach/map.h>
 
@@ -142,10 +141,8 @@ static int allocate_heap_memory(struct ion_heap *heap)
 						&(cp_heap->handle),
 						0,
 						&attrs);
-		if (!cp_heap->cpu_addr) {
-			trace_ion_cp_alloc_retry(tries);
+		if (!cp_heap->cpu_addr)
 			msleep(20);
-		}
 	}
 
 	if (!cp_heap->cpu_addr)
