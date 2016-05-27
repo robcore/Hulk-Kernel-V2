@@ -1845,7 +1845,6 @@ static ssize_t snd_timer_user_read(struct file *file, char __user *buffer,
 {
 	struct snd_timer_user *tu;
 	long result = 0, unit;
-	int qhead;
 	int err = 0;
 
 	tu = file->private_data;
@@ -1857,7 +1856,7 @@ static ssize_t snd_timer_user_read(struct file *file, char __user *buffer,
 
 			if ((file->f_flags & O_NONBLOCK) != 0 || result > 0) {
 				err = -EAGAIN;
-				goto _error;
+				break;
 			}
 
 			set_current_state(TASK_INTERRUPTIBLE);
@@ -1872,33 +1871,38 @@ static ssize_t snd_timer_user_read(struct file *file, char __user *buffer,
 
 			if (signal_pending(current)) {
 				err = -ERESTARTSYS;
+				break;
+			}
+		}
+
+		spin_unlock_irq(&tu->qlock);
+		if (err < 0)
+			goto _error;
+
+		if (tu->tread) {
+			if (copy_to_user(buffer, &tu->tqueue[tu->qhead++],
+					 sizeof(struct snd_timer_tread))) {
+				err = -EFAULT;
+				goto _error;
+			}
+		} else {
+			if (copy_to_user(buffer, &tu->queue[tu->qhead++],
+					 sizeof(struct snd_timer_read))) {
+				err = -EFAULT;
 				goto _error;
 			}
 		}
 
-		qhead = tu->qhead++;
 		tu->qhead %= tu->queue_size;
-		spin_unlock_irq(&tu->qlock);
 
-		if (tu->tread) {
-			if (copy_to_user(buffer, &tu->tqueue[qhead],
-					 sizeof(struct snd_timer_tread)))
-				err = -EFAULT;
-		} else {
-			if (copy_to_user(buffer, &tu->queue[qhead],
-					 sizeof(struct snd_timer_read)))
-				err = -EFAULT;
-		}
+		result += unit;
+		buffer += unit;
 
 		spin_lock_irq(&tu->qlock);
 		tu->qused--;
-		if (err < 0)
-			goto _error;
-		result += unit;
-		buffer += unit;
 	}
- _error:
 	spin_unlock_irq(&tu->qlock);
+ _error:
 	return result > 0 ? result : err;
 }
 

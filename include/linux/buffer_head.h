@@ -352,4 +352,3 @@ static inline int sync_mapping_buffers(struct address_space *mapping) { return 0
 
 #endif /* CONFIG_BLOCK */
 #endif /* _LINUX_BUFFER_HEAD_H */
-
