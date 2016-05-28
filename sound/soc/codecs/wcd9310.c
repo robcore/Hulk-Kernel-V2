@@ -4142,7 +4142,7 @@ int tabla_write(struct snd_soc_codec *codec, unsigned int reg,
 	return wcd9xxx_reg_write(codec->control_data, reg, value);
 #endif
 }
-#ifdef #if defined(CONFIG_SOUND_CONTROL_HAX_GPL) || defined (CONFIG_SOUND_CONTROL_HAX_3_GPL)
+#if defined(CONFIG_SOUND_CONTROL_HAX_GPL) || defined (CONFIG_SOUND_CONTROL_HAX_3_GPL)
 EXPORT_SYMBOL(tabla_write);
 #endif
 
