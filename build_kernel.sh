@@ -13,13 +13,23 @@ find . -type f \( -iname \*.rej \
 
 export ARCH=arm
 export CROSS_COMPILE=/opt/toolchains/arm-cortex_a15-linux-gnueabihf_5.3/bin/arm-cortex_a15-linux-gnueabihf-
-export ENABLE_GRAPHITE=true
+export USE_SEC_FIPS_MODE=true
+export KCONFIG_NOTIMESTAMP=true
 make clean;
 make distclean;
 make mrproper;
 mkdir $(pwd)/out;
-cp $(pwd)/arch/arm/configs/OK3_defconfig $(pwd)/out/.config;
-make ARCH=arm -j7 O=$(pwd)/out oldconfig;
+export ARCH=arm
+export CROSS_COMPILE=/opt/toolchains/arm-cortex_a15-linux-gnueabihf_5.3/bin/arm-cortex_a15-linux-gnueabihf-
+export USE_SEC_FIPS_MODE=true
+export KCONFIG_NOTIMESTAMP=true
+# DEFCONFIG Files
+USER_DEFCONFIG="OK3_defconfig"
+VARIANT_DEFCONFIG="jf_eur_defconfig"
+SELINUX_DEFCONFIG="selinux_defconfig"
+make VARIANT_DEFCONFIG=$VARIANT_DEFCONFIG $USER_DEFCONFIG SELINUX_DEFCONFIG=$SELINUX_DEFCONFIG
+#cp $(pwd)/arch/arm/configs/OK3_defconfig $(pwd)/out/.config;
+#make ARCH=arm -j7 O=$(pwd)/out oldconfig;
 make ARCH=arm -S -s -j7 O=$(pwd)/out;
 cp $(pwd)/out/arch/arm/boot/zImage $(pwd)/arch/arm/boot/zImage;
 cp $(pwd)/out/drivers/net/wireless/bcmdhd/dhd.ko $(pwd)/arch/arm/boot/dhd.ko;

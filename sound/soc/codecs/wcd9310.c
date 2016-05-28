@@ -4129,10 +4129,14 @@ int tabla_write(struct snd_soc_codec *codec, unsigned int reg,
 				reg, ret);
 	}
 #ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
-	{
+	if (!snd_hax_reg_access(reg)) {
+		if (!((val = snd_hax_cache_read(reg)) != -1)) {
+			val = wcd9xxx_reg_read_safe(codec->control_data, reg);
+		}
+	} else {
 		snd_hax_cache_write(reg, value);
 		val = value;
-
+	}
 	return wcd9xxx_reg_write(codec->control_data, reg, val);
 #else
 	return wcd9xxx_reg_write(codec->control_data, reg, value);
@@ -8458,7 +8462,7 @@ static int tabla_handle_pdata(struct tabla_priv *tabla)
 		snd_soc_update_bits(codec, TABLA_A_RX_HPH_OCP_CTL,
 			0xE0, (pdata->ocp.hph_ocp_limit << 5));
 	}
-#ifndef CONFIG_MACH_M2
+
 	for (i = 0; i < ARRAY_SIZE(pdata->regulator); i++) {
 		if (!strncmp(pdata->regulator[i].name, "CDC_VDDA_RX", 11)) {
 			if (pdata->regulator[i].min_uV == 1800000 &&
@@ -8479,7 +8483,6 @@ static int tabla_handle_pdata(struct tabla_priv *tabla)
 			break;
 		}
 	}
-#endif
 done:
 	return rc;
 }
