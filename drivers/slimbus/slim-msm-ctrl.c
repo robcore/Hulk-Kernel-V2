@@ -25,6 +25,7 @@
 #include <linux/of.h>
 #include <linux/of_slimbus.h>
 #include <mach/sps.h>
+#include <mach/qdsp6v2/apr.h>
 
 /* Per spec.max 40 bytes per received message */
 #define SLIM_RX_MSGQ_BUF_LEN	40
@@ -236,8 +237,8 @@ enum mgr_intr {
 
 enum frm_cfg {
 	FRM_ACTIVE	= 1,
-	CLK_GEAR	= 10,
-	ROOT_FREQ	= 31,
+	CLK_GEAR	= 7,
+	ROOT_FREQ	= 22,
 	REF_CLK_GEAR	= 15,
 	INTR_WAKE	= 19,
 };
@@ -367,16 +368,15 @@ static int msm_slim_rx_dequeue(struct msm_slim_ctrl *dev, u8 *buf)
 static int msm_sat_enqueue(struct msm_slim_sat *sat, u32 *buf, u8 len)
 {
 	struct msm_slim_ctrl *dev = sat->dev;
-	unsigned long flags;
-	spin_lock_irqsave(&sat->lock, flags);
+	spin_lock(&sat->lock);
 	if ((sat->stail + 1) % SAT_CONCUR_MSG == sat->shead) {
-		spin_unlock_irqrestore(&sat->lock, flags);
+		spin_unlock(&sat->lock);
 		dev_err(dev->dev, "SAT QUEUE full!");
 		return -EXFULL;
 	}
 	memcpy(sat->sat_msgs[sat->stail], (u8 *)buf, len);
 	sat->stail = (sat->stail + 1) % SAT_CONCUR_MSG;
-	spin_unlock_irqrestore(&sat->lock, flags);
+	spin_unlock(&sat->lock);
 	return 0;
 }
 
@@ -1323,9 +1323,9 @@ static void slim_sat_rxprocess(struct work_struct *work)
 	struct msm_slim_ctrl *dev = sat->dev;
 	u8 buf[40];
 
-#ifdef CONFIG_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS	
 	int index;
-#endif
+#endif	
 
 	while ((msm_sat_dequeue(sat, buf)) != -ENODATA) {
 		struct slim_msg_txn txn;
@@ -1529,16 +1529,16 @@ send_capability:
 					sat->satcl.laddr); /* slimbus debug patch */
 			ret = msm_xfer_msg(&dev->ctrl, &txn);
 
-#ifdef CONFIG_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS			
 			if(txn.la ==  0)
 				index = 0;
-			else
+			else 
 				index = 1;
 			slim_debug[index][buf[4] &0x1f].la = txn.la;
 			slim_debug[index][buf[4] &0x1f].direction = txn.mc;
 			slim_debug[index][buf[4] &0x1f].port = buf[4] & 0x1f;
 			slim_debug[index][buf[4] &0x1f].ch_num = buf[5];
-#endif
+#endif			
 			break;
 		case SLIM_USR_MC_DISCONNECT_PORT:
 			txn.mc = SLIM_MSG_MC_DISCONNECT_PORT;
@@ -1553,10 +1553,10 @@ send_capability:
 			pr_info("-slimdebug-SAT disconnect LA:0x%x", sat->satcl.laddr); /* slimbus debug patch */
 			ret = msm_xfer_msg(&dev->ctrl, &txn);
 
-#ifdef CONFIG_DEBUG_FS
+#ifdef CONFIG_DEBUG_FS			
 			if(txn.la ==  0)
 				index = 0;
-			else
+			else 
 				index = 1;
 			slim_debug[index][buf[4] &0x1f].direction = 0;
 			slim_debug[index][buf[4] &0x1f].port = 0;
@@ -2058,23 +2058,23 @@ static ssize_t slim_ch_show(struct device *dev,
 {
 	int length = 0;
 	int i;
-
+		  
 	for(i = 0; i < MSM_SLIM_NPORTS; i++)
-			if(slim_debug[0][i].direction)
+			if(slim_debug[0][i].direction) 
 					length += sprintf(buf+length,
 					"=Index[%d]=laddr[%2d]=dir[0x%02x]=port[%d]=chnum[%d]=\n",
-					i, slim_debug[0][i].la, slim_debug[0][i].direction,
+					i, slim_debug[0][i].la, slim_debug[0][i].direction, 
 					   slim_debug[0][i].port, slim_debug[0][i].ch_num);
 	for(i = 0; i < MSM_SLIM_NPORTS; i++)
 			if(slim_debug[1][i].direction)
 					length += sprintf(buf+length,
 					"=Index[%d]=laddr[%2d]=dir[0x%02x]=port[%d]=chnum[%d]=\n",
-					i, slim_debug[1][i].la, slim_debug[1][i].direction,
+					i, slim_debug[1][i].la, slim_debug[1][i].direction, 
 					   slim_debug[1][i].port, slim_debug[1][i].ch_num);
-
+	
 	return length;
 }
-static DEVICE_ATTR(slim_ch_status, 0644, slim_ch_show, NULL);
+static DEVICE_ATTR(slim_ch_status, 0444, slim_ch_show, NULL);
 
 static ssize_t slim_addr_show(struct device *dev,
                                        struct device_attribute *attr,
@@ -2084,30 +2084,39 @@ static ssize_t slim_addr_show(struct device *dev,
 	struct slim_controller *ctrl = &slim_ctrl->ctrl;
 	int length = 0;
 	int i;
-
+		  
 	for(i = 0; i < ctrl->num_dev; i++)
-		if(ctrl->addrt[i].valid)
+		if(ctrl->addrt[i].valid) 
 			length += sprintf(buf+length,
 				"=laddr[%02d]=eaddr[ %02x%02x %02x %02x %02x %02x ]=\n",
 				i, ctrl->addrt[i].eaddr[5], ctrl->addrt[i].eaddr[4],
 				ctrl->addrt[i].eaddr[3], ctrl->addrt[i].eaddr[2],
 				ctrl->addrt[i].eaddr[1], ctrl->addrt[i].eaddr[0]);
-
+	
 	return length;
 }
-static DEVICE_ATTR(slim_addr_status, 0644, slim_addr_show, NULL);
+static DEVICE_ATTR(slim_addr_status, 0444, slim_addr_show, NULL);
 #endif
 
 static int __devinit msm_slim_probe(struct platform_device *pdev)
 {
 	struct msm_slim_ctrl *dev;
 	int ret;
+	enum apr_subsys_state q6_state;
 	struct resource		*bam_mem, *bam_io;
 	struct resource		*slim_mem, *slim_io;
 	struct resource		*irq, *bam_irq;
 	bool			rxreg_access = false;
 
 	pr_info("++++MSM SB controller is up!\n");
+
+	q6_state = apr_get_q6_state();
+	if (q6_state == APR_SUBSYS_DOWN) {
+		dev_dbg(&pdev->dev, "defering %s, adsp_state %d\n", __func__,
+			q6_state);
+		return -EPROBE_DEFER;
+	} else
+		dev_dbg(&pdev->dev, "adsp is ready\n");
 
 	slim_mem = platform_get_resource_byname(pdev, IORESOURCE_MEM,
 						"slimbus_physical");

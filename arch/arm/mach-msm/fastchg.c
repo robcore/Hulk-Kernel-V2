@@ -417,15 +417,15 @@ static ssize_t info_show(struct kobject *kobj,
 	return sprintf(
 		buf,
 		"Forced Fast Charge for Samsung Galaxy S4 Qualcomm %s\n\n"
-		"Fast charge mode : %s\n"
+		"Fast charge mode      : %s\n"
 		"MTP while charging mode : %s\n"
 		"Screen on Current Limit mode : %s\n"
-		"Custom  AC level : %dmA/h\n"
-		"Custom USB level : %dmA/h\n"
+		"Custom  AC level      : %dmA/h\n"
+		"Custom USB level      : %dmA/h\n"
 		"Custom Wireless level : %dmA/h\n"
-		"Failsafe mode : %s\n"
-		"Valid AC  levels : %s\n"
-		"Valid USB levels : %s\n"
+		"Failsafe mode         : %s\n"
+		"Valid AC  levels      : %s\n"
+		"Valid USB levels      : %s\n"
 		"Valid Wireless levels : %s\n",
 		 FAST_CHARGE_VERSION,
 		 force_fast_charge == FAST_CHARGE_DISABLED 	   ? "0 - Disabled (default)" :
@@ -433,8 +433,8 @@ static ssize_t info_show(struct kobject *kobj,
 		(force_fast_charge == FAST_CHARGE_FORCE_CUSTOM_MA  ? "2 - Use custom mA on AC and USB" : "Problem : value out of range")),
 		 use_mtp_during_fast_charge          == USE_MTP_DURING_FAST_CHARGE_DISABLED           ? "0 - Disabled" :
 		(use_mtp_during_fast_charge          == USE_MTP_DURING_FAST_CHARGE_ENABLED            ? "1 - Enabled" : "Problem : value out of range"),
-		 screen_on_current_limit          == SCREEN_ON_CURRENT_LIMIT_DISABLED           ? "0 - Disabled" :
-		(screen_on_current_limit          == SCREEN_ON_CURRENT_LIMIT_ENABLED            ? "1 - Enabled" : "Problem : value out of range"),
+		 screen_on_current_limit             == SCREEN_ON_CURRENT_LIMIT_DISABLED              ? "0 - Disabled" :
+		(screen_on_current_limit             == SCREEN_ON_CURRENT_LIMIT_ENABLED               ? "1 - Enabled" : "Problem : value out of range"),
 		 ac_charge_level,
 		 usb_charge_level,
 		 wireless_charge_level,
@@ -493,13 +493,13 @@ int force_fast_charge_init(void)
 	/* Use Samsung Screen ON current limit while charging, enabled by default */
 	screen_on_current_limit = SCREEN_ON_CURRENT_LIMIT_DISABLED;
 	/* Default AC charge level to 2100mA/h    */
-	ac_charge_level   = AC_CHARGE_2100;
+	ac_charge_level       = AC_CHARGE_2100;
 	/* Default USB charge level to 460mA/h    */
-	usb_charge_level  = USB_CHARGE_460;
+	usb_charge_level      = USB_CHARGE_460;
 	/* Default USB charge level to 650mA/h    */
 	wireless_charge_level = WIRELESS_CHARGE_650;
 	/* Allow only values in list by default   */
-	failsafe          = FAIL_SAFE_DISABLED;
+	failsafe              = FAIL_SAFE_DISABLED;
 
         force_fast_charge_kobj =
 		kobject_create_and_add("fast_charge", kernel_kobj);
