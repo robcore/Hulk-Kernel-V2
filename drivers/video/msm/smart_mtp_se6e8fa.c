@@ -3582,3 +3582,4 @@ int smart_dimming_init(struct SMART_DIM *psmart)
 #endif
 	return 0;
 }
+
