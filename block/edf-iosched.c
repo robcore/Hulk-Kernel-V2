@@ -8,7 +8,8 @@
  *
  * It has no tunables, except for timeslice quanta and read/write weights.
  */
-
+#include <linux/kernel.h>
+#include <linux/fs.h>
 #include <linux/blkdev.h>
 #include <linux/elevator.h>
 #include <linux/bio.h>
@@ -22,6 +23,11 @@
  *     logical deadline
  *   - ioprio support
  */
+/* Timeslice quanta.
+ * The timeslice quanta determines the length of deadline expiry, by
+ * applying a ratio to the timeslice quanta to yield each deadline.
+ */
+static const int timeslice_quanta = 2 * HZ;
 
 struct edf_data {
 	/* list of requests doing i/o */
@@ -33,16 +39,10 @@ struct edf_data {
 	unsigned int merged_requests;
 
 	/* settings */
-	unsigned int timeslice_quanta;
-	unsigned int read_weight;
-	unsigned int write_weight;
+	int timeslice_quanta;
+	int read_weight;
+	int write_weight;
 };
-
-/* Timeslice quanta.
- * The timeslice quanta determines the length of deadline expiry, by
- * applying a ratio to the timeslice quanta to yield each deadline.
- */
-static const int timeslice_quanta = 2 * HZ;
 
 /* Deadline management.
  * These functions determine read and write deadline expiry times by
@@ -178,29 +178,33 @@ edf_latter_request(struct request_queue *q, struct request *rq)
 }
 
 /* Constructor/destructor. */
-static void *
-edf_init_queue(struct request_queue *q)
+static int edf_init_queue(struct request_queue *q, struct elevator_type *e)
 {
 	struct edf_data *edf;
+	struct elevator_queue *eq;
+
+	eq = elevator_alloc(q, e);
+	if (!eq)
+		return -ENOMEM;
 
 	edf = kmalloc_node(sizeof(*edf), GFP_KERNEL | __GFP_ZERO, q->node);
-	if (edf == NULL)
-		return NULL;
+	if (!edf) {
+		kobject_put(&eq->kobj);
+		return -ENOMEM;
+	}
+	eq->elevator_data = edf;
 
 	INIT_LIST_HEAD(&edf->read_list);
 	INIT_LIST_HEAD(&edf->write_list);
-
 	edf->timeslice_quanta = timeslice_quanta;
 	edf->read_weight = 2;
 	edf->write_weight = 4;
 
-	q->elevator->elevator_data = edf;
-
-	return edf;
+	q->elevator = eq;
+	return 0;
 }
 
-static void
-edf_exit_queue(struct elevator_queue *e)
+static void edf_exit_queue(struct elevator_queue *e)
 {
 	struct edf_data *edf = e->elevator_data;
 
@@ -211,14 +215,15 @@ edf_exit_queue(struct elevator_queue *e)
 }
 
 /* sysfs -- basically lifted verbatim from deadline iosched */
+
 static ssize_t
-edf_sysfs_var_show(int var, char *page)
+edf_var_show(int var, char *page)
 {
 	return sprintf(page, "%d\n", var);
 }
 
 static ssize_t
-edf_sysfs_var_store(int *var, const char *page, size_t count)
+edf_var_store(int *var, const char *page, size_t count)
 {
 	char *p = (char *) page;
 
@@ -227,62 +232,62 @@ edf_sysfs_var_store(int *var, const char *page, size_t count)
 }
 
 #define SHOW_FUNCTION(__FUNC, __VAR, __CONV)				\
-	static ssize_t __FUNC(struct elevator_queue *e, char *page)	\
-	{								\
-		struct edf_data *edf = e->elevator_data;		\
-		int __data = __VAR;					\
-		if (__CONV)						\
-			__data = jiffies_to_msecs(__data);		\
-		return edf_sysfs_var_show(__data, (page));		\
-	}
+static ssize_t __FUNC(struct elevator_queue *e, char *page)		\
+{									\
+	struct edf_data *edf = e->elevator_data;			\
+	int __data = __VAR;						\
+	if (__CONV)							\
+		__data = jiffies_to_msecs(__data);			\
+	return edf_var_show(__data, (page));		\
+}
 
-SHOW_FUNCTION(edf_sysfs_read_weight_show, edf->read_weight, 0);
-SHOW_FUNCTION(edf_sysfs_write_weight_show, edf->write_weight, 0);
-SHOW_FUNCTION(edf_sysfs_timeslice_quanta_show, edf->timeslice_quanta, 1);
-SHOW_FUNCTION(edf_sysfs_batched_requests_show, edf->batched_requests, 0);
-SHOW_FUNCTION(edf_sysfs_merged_requests_show, edf->merged_requests, 0);
+SHOW_FUNCTION(edf_read_weight_show, edf->read_weight, 0);
+SHOW_FUNCTION(edf_write_weight_show, edf->write_weight, 0);
+SHOW_FUNCTION(edf_timeslice_quanta_show, edf->timeslice_quanta, 1);
+SHOW_FUNCTION(edf_batched_requests_show, edf->batched_requests, 0);
+SHOW_FUNCTION(edf_merged_requests_show, edf->merged_requests, 0);
 #undef SHOW_FUNCTION
 
-#define STORE_FUNCTION(__FUNC, __PTR, MIN, MAX, __CONV)						\
-	static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)		\
-	{											\
-		struct edf_data *edf = e->elevator_data;					\
-		int __data;									\
-		int ret = edf_sysfs_var_store(&__data, (page), count);				\
-		if (__data < (MIN))								\
-			__data = (MIN);								\
-		else if (__data > (MAX))							\
-			__data = (MAX);								\
-		if (__CONV)									\
-			*(__PTR) = msecs_to_jiffies(__data);					\
-		else										\
-			*(__PTR) = __data;							\
-		return ret;									\
-	}
+#define STORE_FUNCTION(__FUNC, __PTR, MIN, MAX, __CONV)			\
+static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)	\
+{									\
+	struct edf_data *edf = e->elevator_data;			\
+	int __data;							\
+	int ret = edf_var_store(&__data, (page), count);		\
+	if (__data < (MIN))						\
+		__data = (MIN);						\
+	else if (__data > (MAX))					\
+		__data = (MAX);						\
+	if (__CONV)							\
+		*(__PTR) = msecs_to_jiffies(__data);			\
+	else								\
+		*(__PTR) = __data;					\
+	return ret;							\
+}
 #define DUMMY_STORE_FUNCTION(__FUNC, __PTR, MIN, MAX, __CONV)					\
-	static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)		\
-	{											\
-		return count;									\
-	}
+static ssize_t __FUNC(struct elevator_queue *e, const char *page, size_t count)		\
+{											\
+	return count;									\
+}
 
-STORE_FUNCTION(edf_sysfs_read_weight_store, &edf->read_weight, 0, INT_MAX, 0);
-STORE_FUNCTION(edf_sysfs_write_weight_store, &edf->write_weight, 0, INT_MAX, 0);
-STORE_FUNCTION(edf_sysfs_timeslice_quanta_store, &edf->timeslice_quanta, 0, INT_MAX, 1);
+STORE_FUNCTION(edf_read_weight_store, &edf->read_weight, 0, INT_MAX, 0);
+STORE_FUNCTION(edf_write_weight_store, &edf->write_weight, 0, INT_MAX, 0);
+STORE_FUNCTION(edf_timeslice_quanta_store, &edf->timeslice_quanta, 0, INT_MAX, 1);
 
-DUMMY_STORE_FUNCTION(edf_sysfs_batched_requests_store, &edf->batched_requests, 0, INT_MAX, 0);
-DUMMY_STORE_FUNCTION(edf_sysfs_merged_requests_store, &edf->merged_requests, 0, INT_MAX, 0);
+DUMMY_STORE_FUNCTION(edf_batched_requests_store, &edf->batched_requests, 0, INT_MAX, 0);
+DUMMY_STORE_FUNCTION(edf_merged_requests_store, &edf->merged_requests, 0, INT_MAX, 0);
 #undef STORE_FUNCTION
 #undef DUMMY_STORE_FUNCTION
 
-#define EDF_FS_ATTR(name) \
-	__ATTR(name, S_IRUGO | S_IWUSR, edf_sysfs_##name##_show, edf_sysfs_##name##_store)
+#define EDF_ATTR(name) \
+	__ATTR(name, S_IRUGO|S_IWUSR, edf_##name##_show, edf_##name##_store)
 
 static struct elv_fs_entry edf_attrs[] = {
-	EDF_FS_ATTR(read_weight),
-	EDF_FS_ATTR(write_weight),
-	EDF_FS_ATTR(timeslice_quanta),
-	EDF_FS_ATTR(batched_requests),
-	EDF_FS_ATTR(merged_requests),
+	EDF_ATTR(read_weight),
+	EDF_ATTR(write_weight),
+	EDF_ATTR(timeslice_quanta),
+	EDF_ATTR(batched_requests),
+	EDF_ATTR(merged_requests),
 	__ATTR_NULL
 };
 
