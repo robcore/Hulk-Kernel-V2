@@ -49,6 +49,15 @@ config IOSCHED_ROW
 	  according to queue priority.
 	  Most suitable for mobile devices.
 
+config IOSCHED_EDF
+	tristate "EDF I/O scheduler"
+	default y
+	---help---
+	  EDF is a simple earliest deadline first scheduler which does merging based
+	  on deadlines.  It is designed for use with virtual disks, provided by for example,
+	  a hypervisor, or a hardware RAID card.  It may also work well with SSDs.
+	  It has no tunables, except for timeslice quanta and read/write weights.
+
 config IOSCHED_CFQ
 	tristate "CFQ I/O scheduler"
 	default y
