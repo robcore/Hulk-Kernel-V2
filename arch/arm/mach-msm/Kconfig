@@ -3380,6 +3380,18 @@ config MSM_LIMITER
 	  The MSM Frequency Limiter Driver controls max frequency limit for each CPU
 	  to desired value on suspend/resume
 
+config UPDATE_LCDC_LUT
+	default y
+	bool "enable LCDC LUT"
+	help
+	  enable LCDC LUT
+
+config LCD_KCAL
+        tristate "MSM generic LCDC Calibration"
+        default y
+        help
+          Enable MSM generic LCDC temperature Calibration.
+
 endif
 
 config KERNEL_TEXT_MPU_PROT
