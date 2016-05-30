@@ -928,7 +928,7 @@ static int  mipi_pmic_gpios_pmconfig(int state)
 			MLCD_ON);
 		return ret;
 	}
-#endif	
+#endif
 	ret = pm8xxx_gpio_config(IMA_PWR_EN, &param);
 	if (ret) {
 		pr_err("%s: Failed to configure gpio %d\n", __func__,
@@ -962,7 +962,7 @@ static int  mipi_pmic_gpios_pmconfig(int state)
 
 #define PMIC_GPIO_LCD_RESET 43
 static int mipi_dsi_cdp_panel_power_kona(int on)
-{ 
+{
 	static struct regulator  *reg_l2;
 	static int gpio43;
 	int rc=0;
@@ -988,7 +988,7 @@ static int mipi_dsi_cdp_panel_power_kona(int on)
 				PTR_ERR(reg_l2));
 			return -ENODEV;
 		}
-		
+
 		rc = regulator_set_voltage(reg_l2, 1200000, 1200000);
 		if (rc) {
 			pr_err("set_voltage l2 failed, rc=%d\n", rc);
@@ -1042,7 +1042,7 @@ static int mipi_dsi_cdp_panel_power_kona(int on)
 		msleep(20);
 		gpio_set_value(LCD_EN, 1);
 		msleep(20);
-		
+
 #ifdef CONFIG_SAMSUNG_CMC624
 		if (samsung_has_cmc624()) {
 			struct pm_gpio cmc_gpio_param = {
@@ -1090,7 +1090,7 @@ static int mipi_dsi_cdp_panel_power_kona(int on)
 				rc);
 				return -ENODEV;
 			}
-	
+
 			pr_info("All CMC GPIOs configured\n");
 			cmc_power(on);
 			mdelay(25);
@@ -1111,7 +1111,7 @@ static int mipi_dsi_cdp_panel_power_kona(int on)
 
 #ifdef CONFIG_SAMSUNG_CMC624/*change CMC gpio cfg*/
 		mipi_pmic_gpios_pmconfig(0);
-#endif		
+#endif
 		rc = regulator_set_optimum_mode(reg_l2, 100000);
 		if (rc < 0) {
 			pr_err("set_optimum_mode l2 failed, rc=%d\n", rc);
@@ -1122,7 +1122,7 @@ static int mipi_dsi_cdp_panel_power_kona(int on)
 			pr_err("enable l2 failed, rc=%d\n", rc);
 			return -ENODEV;
 		}
-		
+
 		msleep(20);
 		gpio_set_value(LCD_EN, 1);
 
@@ -1131,10 +1131,10 @@ static int mipi_dsi_cdp_panel_power_kona(int on)
 		if (samsung_has_cmc624())
 			cmc_power(on);
  #endif
-	
+
 		/* Wait 25ms */
 		msleep(25);
-	
+
 			/* Active Reset */
 #ifdef CONFIG_SAMSUNG_CMC624
 		if (samsung_has_cmc624()) {
@@ -1158,7 +1158,7 @@ static int mipi_dsi_cdp_panel_power_kona(int on)
 		msleep(5);
 		pr_debug("%s: LCD_EN_GPIO low\n", __func__);
 		gpio_set_value(LCD_EN, 0);
-		msleep(5);	
+		msleep(5);
 		gpio_set_value_cansleep(gpio43, 0);
 		msleep(5);
 		rc = regulator_disable(reg_l2);
@@ -1389,7 +1389,7 @@ static int mipi_dsi_cdp_panel_power(int on)
 	|| defined(CONFIG_FB_MSM_MIPI_NOVATEK_BOE_CMD_WVGA_PT) \
 	|| defined(CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_WVGA_PT_PANEL) \
 	|| defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_QHD_PT) \
-	|| defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT) 
+	|| defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT)
 		udelay(10);
 		active_reset_ldi();
 #endif
@@ -1451,7 +1451,7 @@ static int mipi_dsi_cdp_panel_power(int on)
 				pr_err("request MLCD_ON failed, rc=%d\n", rc);
 				return -ENODEV;
 			}
-#endif			
+#endif
 			pr_info("All CMC GPIOs configured\n");
 			cmc_power(on);
 			mdelay(25);
@@ -1463,7 +1463,7 @@ static int mipi_dsi_cdp_panel_power(int on)
 			gpio_direction_output(gpio43, 1);
 #endif
 		}
-#else 
+#else
 		gpio_direction_output(gpio43, 1);
 #endif
 		dsi_power_on = true;
@@ -1610,7 +1610,7 @@ static int mipi_dsi_cdp_panel_power(int on)
 	&& !defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_QHD_PT) \
 	&& !defined(CONFIG_FB_MSM_MIPI_MAGNA_OLED_VIDEO_WVGA_PT) \
 	&& !defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_WXGA_PT_PANEL)
-	
+
 		gpio_direction_output(GPIO_LCD_22V_EN, 0);
 #endif
 #endif
@@ -1671,7 +1671,7 @@ static int mipi_dsi_panel_power(int on)
 #if defined(CONFIG_FB_MSM_MIPI_NOVATEK_VIDEO_WXGA_PT_PANEL)
 	else if(machine_is_KONA())
 		ret=mipi_dsi_cdp_panel_power_kona(on);
-#endif	
+#endif
 	else
 		ret = mipi_dsi_cdp_panel_power(on);
 
@@ -1792,8 +1792,6 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.mem_hid = MEMTYPE_EBI1,
 #endif
 	.cont_splash_enabled = 0x00,
-	.splash_screen_addr = 0x00,
-	.splash_screen_size = 0x00,
 	.mdp_iommu_split_domain = 0,
 };
 
