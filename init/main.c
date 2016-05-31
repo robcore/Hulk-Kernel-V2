@@ -120,7 +120,7 @@ int poweroff_charging;
 #endif /*  CONFIG_SAMSUNG_LPM_MODE */
 
 enum {
-	SGH_I337,
+	SGH_I337M,
 	SPH_L720,
 	SGH_M919,
 	SCH_R970,
@@ -454,7 +454,7 @@ static int __init do_early_param(char *param, char *val, const char *unused)
 #endif
 	/* Here we found the proper platform model of our phones */
 	if ((strncmp(param, "samsung.hardware", 16) == 0)) {
-		if (strncmp(val, "SGH-I337", 8) == 0) {
+		if (strncmp(val, "SGH-I337M", 8) == 0) {
 			samsung_hardware = SGH_I337;
 		} else if (strncmp(val, "SPH-L720", 8) == 0) {
 			samsung_hardware = SPH_L720;
