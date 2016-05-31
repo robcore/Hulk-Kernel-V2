@@ -1,0 +1,13 @@
+--- arch/arm/mach-msm/footswitch-8x60.c
++++ arch/arm/mach-msm/footswitch-8x60.c
+@@ -25,10 +25,7 @@
+ #include <mach/msm_bus.h>
+ #include <mach/scm-io.h>
+ #include <mach/clk.h>
+-#include <mach/rpm.h>
+-
+ #include "footswitch.h"
+-#include "rpm_resources.h"
+ 
+ #ifdef CONFIG_MSM_SECURE_IO
+ #undef readl_relaxed
