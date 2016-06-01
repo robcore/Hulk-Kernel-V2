@@ -12,8 +12,9 @@
  *  GNU General Public License for more details.
  *
  */
-#include "../ssp.h"
 
+#include "../ssp.h"
+#include "../../../arch/arm/mach-msm/board-8064.h"
 
 /*************************************************************************/
 /* factory Sysfs                                                         */
@@ -27,54 +28,44 @@
 #define CALIBRATION_FILE_PATH	"/efs/calibration_data"
 #define CALIBRATION_DATA_AMOUNT	20
 
-static unsigned int is_jf_eur = false;
-
-static unsigned int k330_rev = 0;
+static int k330_rev = 0;
 
 static ssize_t accel_vendor_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct ssp_data *data = dev_get_drvdata(dev);
-
-	if (k330_rev > 0) {
-		if (is_jf_eur == true) {
-			if (data->ap_rev == 13)
-				return sprintf(buf, "%s\n", VENDOR);
-			else if (data->ap_rev >= k330_rev)
-				return sprintf(buf, "%s\n", VENDOR_K330);
-			else
-				return sprintf(buf, "%s\n", VENDOR);
-		} else {
-			if (data->ap_rev >= k330_rev)
-				return sprintf(buf, "%s\n", VENDOR_K330);
-			else
-				return sprintf(buf, "%s\n", VENDOR);
-		}
-	} else
-		return sprintf(buf, "%s\n", VENDOR);
+        if (system_rev <= 10) {
+		if (data->ap_rev >= k330_rev)
+			return sprintf(buf, "%s\n", VENDOR_K330);
+		else
+			return sprintf(buf, "%s\n", VENDOR);
+	} else {
+		if (data->ap_rev == 13)
+			return sprintf(buf, "%s\n", VENDOR);
+		else if (data->ap_rev >= k330_rev)
+			return sprintf(buf, "%s\n", VENDOR_K330);
+		else
+			return sprintf(buf, "%s\n", VENDOR);
+	}
 }
 
 static ssize_t accel_name_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
 	struct ssp_data *data = dev_get_drvdata(dev);
-
-	if (k330_rev > 0) {
-		if (is_jf_eur == true) {
-			if (data->ap_rev == 13)
-				return sprintf(buf, "%s\n", CHIP_ID);
-			else if (data->ap_rev >= k330_rev)
-				return sprintf(buf, "%s\n", CHIP_ID_K330);
-			else
-				return sprintf(buf, "%s\n", CHIP_ID);
-		} else {
-			if (data->ap_rev >= k330_rev)
-				return sprintf(buf, "%s\n", CHIP_ID_K330);
-			else
-				return sprintf(buf, "%s\n", CHIP_ID);
-		}
-	} else
-		return sprintf(buf, "%s\n", CHIP_ID);
+        if (system_rev <= 10) {
+		if (data->ap_rev >= k330_rev)
+			return sprintf(buf, "%s\n", CHIP_ID_K330);
+		else
+			return sprintf(buf, "%s\n", CHIP_ID);
+	} else {
+		if (data->ap_rev == 13)
+			return sprintf(buf, "%s\n", CHIP_ID);
+		else if (data->ap_rev >= k330_rev)
+			return sprintf(buf, "%s\n", CHIP_ID_K330);
+		else
+			return sprintf(buf, "%s\n", CHIP_ID);
+	}
 }
 
 int accel_open_calibration(struct ssp_data *data)
@@ -342,21 +333,10 @@ static struct device_attribute *acc_attrs[] = {
 
 void initialize_accel_factorytest(struct ssp_data *data)
 {
-	if (samsung_hardware == GT_I9505)
-		is_jf_eur = true;
-
-	if (samsung_hardware == SGH_I337
-		 || samsung_hardware == SGH_M919
-		 || samsung_hardware == SCH_R970
-		 || samsung_hardware == GT_I9505
-		 || samsung_hardware == SHV_E300)
+	if (system_rev <= 10)
 		k330_rev = 10;
-	else if (samsung_hardware == SPH_L720
-		 	 || samsung_hardware == SCH_I545
-		 	 || samsung_hardware == SGH_N045)
+	else
 		k330_rev = 11;
-	else if (samsung_hardware == GT_I9295)
-		k330_rev = 12;
 
 	sensors_register(data->acc_device, data, acc_attrs,
 		"accelerometer_sensor");
