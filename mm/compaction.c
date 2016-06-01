@@ -421,6 +421,7 @@ static void isolate_freepages(struct zone *zone,
 	 */
 	for (; pfn >= low_pfn && cc->nr_migratepages > nr_freepages;
 					pfn -= pageblock_nr_pages) {
+		unsigned long isolated;
 		unsigned long end_pfn;
 
 		if (!pfn_valid(pfn))
