@@ -191,8 +191,6 @@ static void get_futex_key_refs(union futex_key *key)
 	case FUT_OFF_MMSHARED:
 		atomic_inc(&key->private.mm->mm_count);
 		break;
-	default:
-		smp_mb(); /* explicit MB (B) */
 	}
 }
 
