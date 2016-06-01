@@ -402,7 +402,7 @@ static void set_reclaim_mode(int priority, struct scan_control *sc)
 	 * Restrict reclaim/compaction to costly allocations or when
 	 * under memory pressure
 	 */
-	if (COMPACTION_BUILD && sc->order &&
+	if (IS_ENABLED(CONFIG_COMPACTION) && sc->order &&
 			(sc->order > PAGE_ALLOC_COSTLY_ORDER ||
 			 priority < DEF_PRIORITY - 2))
 		sc->reclaim_mode = RECLAIM_MODE_COMPACTION;
@@ -2119,7 +2119,7 @@ static bool shrink_zones(int priority, struct zonelist *zonelist,
 			if (priority != DEF_PRIORITY &&
 			    !zone_reclaimable(zone))
 				continue;	/* Let kswapd poll it */
-			if (COMPACTION_BUILD) {
+			if (IS_ENABLED(CONFIG_COMPACTION)) {
 				/*
 				 * If we already have plenty of memory free for
 				 * compaction in this zone, don't free any more.
@@ -2443,7 +2443,8 @@ static bool zone_balanced(struct zone *zone, int order,
 				    balance_gap, classzone_idx, 0))
 		return false;
 
-	if (COMPACTION_BUILD && order && !compaction_suitable(zone, order))
+	if (IS_ENABLED(CONFIG_COMPACTION) && order &&
+	    !compaction_suitable(zone, order))
 		return false;
 
 	return true;
@@ -2697,7 +2698,7 @@ loop_again:
 			 * Do not reclaim more than needed for compaction.
 			 */
 			testorder = order;
-			if (COMPACTION_BUILD && order &&
+			if (IS_ENABLED(CONFIG_COMPACTION) && order &&
 					compaction_suitable(zone, order) !=
 						COMPACT_SKIPPED)
 				testorder = 0;
@@ -2829,7 +2830,7 @@ out:
 				continue;
 
 			/* Would compaction fail due to lack of free memory? */
-			if (COMPACTION_BUILD &&
+			if (IS_ENABLED(CONFIG_COMPACTION)
 			    compaction_suitable(zone, order) == COMPACT_SKIPPED)
 				goto loop_again;
 
