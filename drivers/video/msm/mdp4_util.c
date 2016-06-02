@@ -591,6 +591,7 @@ void mdp4_clear_lcdc(void)
 	uint32 bits;
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_ON, FALSE);
+	mdp_clk_ctrl(1);
 
 	bits = inpdw(MDP_BASE + 0xc0000);
 	if (bits & 0x01) { /* enabled already */
@@ -614,6 +615,7 @@ void mdp4_clear_lcdc(void)
 	outpdw(MDP_BASE + 0xc0038, 0);	/* lcdc ctl polarity */
 
 	mdp_pipe_ctrl(MDP_CMD_BLOCK, MDP_BLOCK_POWER_OFF, FALSE);
+	mdp_clk_ctrl(0);
 }
 
 irqreturn_t mdp4_isr(int irq, void *ptr)
