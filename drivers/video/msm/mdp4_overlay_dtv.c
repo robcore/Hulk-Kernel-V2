@@ -367,7 +367,7 @@ void mdp4_dtv_wait4vsync(int cndx)
 
 	if (atomic_read(&vctrl->suspend) > 0)
 		return;
-	
+
 	mdp4_dtv_vsync_irq_ctrl(cndx, 1);
 
 	ret = wait_event_interruptible_timeout(vctrl->wait_queue, 1,
@@ -648,11 +648,7 @@ int mdp4_dtv_on(struct platform_device *pdev)
 /* timing generator off */
 static void mdp4_dtv_tg_off(struct vsycn_ctrl *vctrl)
 {
-	unsigned long flags;
-
-	spin_lock_irqsave(&vctrl->spin_lock, flags);
 	MDP_OUTP(MDP_BASE + DTV_BASE, 0); /* turn off timing generator */
-	spin_unlock_irqrestore(&vctrl->spin_lock, flags);
 	msleep(20);
 }
 
@@ -673,9 +669,9 @@ int mdp4_dtv_off(struct platform_device *pdev)
 
 	vctrl = &vsync_ctrl_db[cndx];
 
-	mdp4_dtv_wait4vsync(cndx);
-
 	wake_up_interruptible_all(&vctrl->wait_queue);
+
+	mdp4_dtv_wait4vsync(cndx);
 
 	pipe = vctrl->base_pipe;
 	if (pipe != NULL) {
