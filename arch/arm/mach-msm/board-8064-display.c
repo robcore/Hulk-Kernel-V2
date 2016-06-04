@@ -296,6 +296,11 @@ static struct msm_panel_common_pdata mdp_pdata = {
 	.cont_splash_enabled = 0x01,
 };
 
+static char mipi_dsi_splash_is_enabled(void)
+{
+	return mdp_pdata.cont_splash_enabled;
+}
+
 void __init apq8064_mdp_writeback(struct memtype_reserve* reserve_table)
 {
 	mdp_pdata.ov0_wb_size = MSM_FB_OVERLAY0_WRITEBACK_SIZE;
@@ -1136,9 +1141,6 @@ static int mipi_panel_power_samsung(int on)
 #endif
 
 static char mipi_dsi_splash_is_enabled(void);
-{
-	return mdp_pdata.cont_splash_enabled;
-}
 
 static struct mipi_dsi_platform_data mipi_dsi_pdata = {
 	.power_common = mipi_power_samsung_common,
