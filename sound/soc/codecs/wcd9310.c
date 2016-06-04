@@ -4117,14 +4117,14 @@ extern unsigned int snd_hax_cache_read(unsigned int);
 extern void snd_hax_cache_write(unsigned int, unsigned int);
 #endif
 
-#ifndef CONFIG_SOUND_CONTROL_HAX_GPL
+#ifndef CONFIG_SOUND_CONTROL_HAX_3_GPL
 static
 #endif
 int tabla_write(struct snd_soc_codec *codec, unsigned int reg,
 	unsigned int value)
 {
 	int ret;
-#if defined(CONFIG_SOUND_CONTROL_HAX_GPL) || defined (CONFIG_SOUND_CONTROL_HAX_3_GPL)
+#ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
 	int val;
 #endif
 
@@ -4150,7 +4150,7 @@ int tabla_write(struct snd_soc_codec *codec, unsigned int reg,
 	return wcd9xxx_reg_write(codec->control_data, reg, value);
 #endif
 }
-#if defined(CONFIG_SOUND_CONTROL_HAX_GPL) || defined (CONFIG_SOUND_CONTROL_HAX_3_GPL)
+#ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
 EXPORT_SYMBOL(tabla_write);
 #endif
 
@@ -4178,7 +4178,7 @@ unsigned int tabla_read(struct snd_soc_codec *codec,
 	val = wcd9xxx_reg_read(codec->control_data, reg);
 	return val;
 }
-#if defined(CONFIG_SOUND_CONTROL_HAX_GPL) || defined (CONFIG_SOUND_CONTROL_HAX_3_GPL)
+#ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
 EXPORT_SYMBOL(tabla_read);
 #endif
 
@@ -8714,9 +8714,6 @@ static void tabla_codec_init_reg(struct snd_soc_codec *codec)
 				      tabla_2_higher_codec_reg_init_val[i].mask,
 				      tabla_2_higher_codec_reg_init_val[i].val);
 	}
-#ifdef CONFIG_MACH_M2
-	snd_soc_write(codec, TABLA_A_BIAS_REF_CTL, 0x1E);
-#endif
 }
 
 static void tabla_update_reg_address(struct tabla_priv *priv)
@@ -8957,7 +8954,7 @@ static const struct file_operations poke_reg_fops = {
 };
 #endif
 
-#if defined(CONFIG_SOUND_CONTROL_HAX_GPL) || defined (CONFIG_SOUND_CONTROL_HAX_3_GPL)
+#ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
 struct snd_kcontrol_new *gpl_faux_snd_controls_ptr =
 		(struct snd_kcontrol_new *)tabla_snd_controls;
 struct snd_soc_codec *fauxsound_codec_ptr;
@@ -8975,7 +8972,7 @@ static int tabla_codec_probe(struct snd_soc_codec *codec)
 	int i;
 	int ch_cnt;
 
-#if defined(CONFIG_SOUND_CONTROL_HAX_GPL) || defined (CONFIG_SOUND_CONTROL_HAX_3_GPL)
+#ifdef CONFIG_SOUND_CONTROL_HAX_3_GPL
 	pr_info("tabla codec probe...\n");
 	fauxsound_codec_ptr = codec;
 #endif

@@ -71,7 +71,7 @@
 #define TABLA_MBHC_DEF_BUTTONS 8
 #define TABLA_MBHC_DEF_RLOADS 5
 
-#define JACK_DETECT_GPIO PM8921_GPIO_PM_TO_SYS(7)
+#define JACK_DETECT_GPIO 38
 
 #define BTSCO_NBS 0
 #define BTSCO_WBS 1
@@ -912,7 +912,7 @@ static int msm_hdmi_rx_ch_put(struct snd_kcontrol *kcontrol,
 		msm_hdmi_rx_ch);
 	return 1;
 }
-	
+
 static int msm_hdmi_rate_put(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
 {
