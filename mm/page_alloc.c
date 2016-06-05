@@ -1472,10 +1472,9 @@ void split_page(struct page *page, unsigned int order)
  * Note: this is probably too low level an operation for use in drivers.
  * Please consult with lkml before using this in your driver.
  */
-int split_free_page(struct page *page)
+int split_free_page(struct page *page, bool for_cma)
 {
 	unsigned int order;
-	unsigned long watermark;
 	struct zone *zone;
 	int mt;
 
@@ -1486,10 +1485,13 @@ int split_free_page(struct page *page)
 	mt = get_pageblock_migratetype(page);
 
 	/* Obey watermarks as if the page was being allocated */
-	watermark = low_wmark_pages(zone) + (1 << order);
-	if (!is_migrate_cma(mt) && mt != MIGRATE_ISOLATE &&
-	    !zone_watermark_ok(zone, 0, watermark, 0, 0))
-		return 0;
+	if (!for_cma) {
+		unsigned long watermark;
+
+		watermark = low_wmark_pages(zone) + (1 << order);
+		if (!zone_watermark_ok(zone, 0, watermark, 0, 0))
+			return 0;
+	}
 
 	/* Remove page from free list */
 	list_del(&page->lru);
@@ -5454,11 +5456,11 @@ int __meminit init_per_zone_wmark_min(void)
 module_init(init_per_zone_wmark_min)
 
 /*
- * min_free_kbytes_sysctl_handler - just a wrapper around proc_dointvec() so 
+ * min_free_kbytes_sysctl_handler - just a wrapper around proc_dointvec() so
  *	that we can call two helper functions whenever min_free_kbytes
  *	changes.
  */
-int min_free_kbytes_sysctl_handler(ctl_table *table, int write, 
+int min_free_kbytes_sysctl_handler(ctl_table *table, int write,
 	void __user *buffer, size_t *length, loff_t *ppos)
 {
 	proc_dointvec(table, write, buffer, length, ppos);
@@ -6103,7 +6105,7 @@ int alloc_contig_range(unsigned long start, unsigned long end,
 
 
 	/* Grab isolated pages from freelists. */
-	outer_end = isolate_freepages_range(outer_start, end);
+	outer_end = isolate_freepages_range(outer_start, end, true);
 	if (!outer_end) {
 		ret = -EBUSY;
 		goto done;
