@@ -39,6 +39,7 @@
 #include <linux/percpu.h>
 #include <linux/slab.h>
 #include <linux/syscore_ops.h>
+#include <linux/wakeup_reason.h>
 
 #include <asm/irq.h>
 #include <asm/exception.h>
@@ -257,6 +258,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 	     i = find_next_bit(pending, gic->max_irq, i+1)) {
 		pr_warning("%s: %d triggered", __func__,
 					i + gic->irq_offset);
+		log_wakeup_reason(i + gic->irq_offset);
 	}
 }
 
@@ -868,8 +870,7 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 {
 	irq_hw_number_t hwirq_base;
 	struct gic_chip_data *gic;
-	struct irq_domain *domain;
-	int gic_irqs, rc;
+	int gic_irqs, irq_base;
 
 	BUG_ON(gic_nr >= MAX_GIC_NR);
 
@@ -885,8 +886,11 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 		gic->dist_base.percpu_base = alloc_percpu(void __iomem *);
 		gic->cpu_base.percpu_base = alloc_percpu(void __iomem *);
 		if (WARN_ON(!gic->dist_base.percpu_base ||
-			    !gic->cpu_base.percpu_base))
-			goto init_bases_err;
+			     !gic->cpu_base.percpu_base)) {
+			free_percpu(gic->dist_base.percpu_base);
+			free_percpu(gic->cpu_base.percpu_base);
+			return;
+		}
 
 		for_each_possible_cpu(cpu) {
 			unsigned long offset = percpu_offset * cpu_logical_map(cpu);
@@ -935,25 +939,15 @@ void __init gic_init_bases(unsigned int gic_nr, int irq_start,
 		     irq_start);
 		irq_base = irq_start;
 	}
-	domain->priv = gic;
-	domain->ops = &gic_irq_domain_ops;
-	rc = irq_domain_add(domain);
-	if (rc) {
-		WARN(1, "Unable to create irq_domain\n");
-		goto init_bases_err;
-	}
-	irq_domain_register(domain);
+	gic->domain = irq_domain_add_legacy(node, gic_irqs, irq_base,
+				    hwirq_base, &gic_irq_domain_ops, gic);
+	if (WARN_ON(!gic->domain))
+		return;
 
 	gic_chip.flags |= gic_arch_extn.flags;
 	gic_dist_init(gic);
 	gic_cpu_init(gic);
 	gic_pm_init(gic);
-
-	return;
-
-init_bases_err:
-	free_percpu(gic->dist_base.percpu_base);
-	free_percpu(gic->cpu_base.percpu_base);
 }
 
 void __cpuinit gic_secondary_init(unsigned int gic_nr)
@@ -1147,50 +1141,6 @@ unsigned int msm_gic_spi_ppi_pending(void)
 	return 0;
 }
 #endif
-/*
- * Before calling this function the interrupts should be disabled
- * and the irq must be disabled at gic to avoid spurious interrupts
- */
-bool gic_is_irq_pending(unsigned int irq)
-{
-	struct irq_data *d = irq_get_irq_data(irq);
-	struct gic_chip_data *gic_data = &gic_data[0];
-	u32 mask, val;
-
-	WARN_ON(!irqs_disabled());
-	raw_spin_lock(&irq_controller_lock);
-	mask = 1 << (gic_irq(d) % 32);
-	val = readl(gic_dist_base(d) +
-			GIC_DIST_ENABLE_SET + (gic_irq(d) / 32) * 4);
-	/* warn if the interrupt is enabled */
-	WARN_ON(val & mask);
-	val = readl(gic_dist_base(d) +
-			GIC_DIST_PENDING_SET + (gic_irq(d) / 32) * 4);
-	raw_spin_unlock(&irq_controller_lock);
-	return (bool) (val & mask);
-}
-
-/*
- * Before calling this function the interrupts should be disabled
- * and the irq must be disabled at gic to avoid spurious interrupts
- */
-void gic_clear_irq_pending(unsigned int irq)
-{
-	struct gic_chip_data *gic_data = &gic_data[0];
-	struct irq_data *d = irq_get_irq_data(irq);
-
-	u32 mask, val;
-	WARN_ON(!irqs_disabled());
-	raw_spin_lock(&irq_controller_lock);
-	mask = 1 << (gic_irq(d) % 32);
-	val = readl(gic_dist_base(d) +
-			GIC_DIST_ENABLE_SET + (gic_irq(d) / 32) * 4);
-	/* warn if the interrupt is enabled */
-	WARN_ON(val & mask);
-	writel(mask, gic_dist_base(d) +
-			GIC_DIST_PENDING_CLEAR + (gic_irq(d) / 32) * 4);
-	raw_spin_unlock(&irq_controller_lock);
-}
 
 void msm_gic_save(void)
 {
