@@ -1851,10 +1851,12 @@ static void msm_bus_bimc_update_bw(struct msm_bus_inode_info *hop,
 			qbw.thh = (110 * bw) / 100;
 			/* Check if info is a shared master.
 			 * If it is, mark it dirty
-			 * If it isn't, then set QOS Bandwidth
+			 * If it isn't, then set QOS Bandwidth.
+			 * Also if dual-conf is set, don't program bw regs.
 			 **/
-			msm_bus_bimc_set_qos_bw(binfo,
-				info->node_info->qport[i], &qbw);
+			if (!info->node_info->dual_conf)
+				msm_bus_bimc_set_qos_bw(binfo,
+					info->node_info->qport[i], &qbw);
 		}
 	}
 
