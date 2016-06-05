@@ -3059,9 +3059,8 @@ static unsigned long rtcc_do_try_to_free_pages(struct zonelist *zonelist, struct
 	if (global_reclaim(sc))
 		count_vm_event(ALLOCSTALL);
 
-	for (priority = DEF_PRIORITY; priority >= 0; priority--) {
+	do {
 		vmpressure_prio(sc->gfp_mask, sc->target_mem_cgroup, sc->priority);
-
 		sc->nr_scanned = 0;
 		aborted_reclaim = shrink_zones(zonelist, sc);
 
