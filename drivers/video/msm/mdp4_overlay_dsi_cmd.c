@@ -291,11 +291,11 @@ int mdp4_dsi_cmd_pipe_commit(int cndx, int wait)
 
         mdp_update_pm(vctrl->mfd, vctrl->vsync_time);
 
-/*
- * allow stage_commit without pipes queued
+/*                                             
+ * allow stage_commit without pipes queued     
  * (vp->update_cnt == 0) to unstage pipes after
- * overlay_unset
- */
+ * overlay_unset                               
+ */                                            
 	xlog(__func__, wait, vp->update_cnt, 0, 0, 0);
 	vctrl->update_ndx++;
 	vctrl->update_ndx &= 0x01;
@@ -404,7 +404,7 @@ int mdp4_dsi_cmd_pipe_commit(int cndx, int wait)
 	mdp4_stat.overlay_commit[pipe->mixer_num]++;
 	if (wait)
 		mdp4_dsi_cmd_wait4vsync(0);
-
+	
 	xlog(__func__, 0x9999, 0, 0, 0, 0);
 	return cnt;
 }
@@ -898,7 +898,7 @@ static void mdp4_overlay_update_dsi_cmd(struct msm_fb_data_type *mfd)
 
 	/* TE enabled */
 	mdp4_mipi_vsync_enable(mfd, pipe, 0);
-
+	
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
 	mdp4_calc_blt_mdp_bw(mfd, pipe);
 	MDP_OUTP(MDP_BASE + 0x021c, 10); /* read pointer */
@@ -1066,24 +1066,21 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 	int undx;
 	int need_wait, cnt;
 	unsigned long flags;
-	int mixer = 0;
 
 	pr_debug("%s+: pid=%d\n", __func__, current->pid);
 
 	mfd = (struct msm_fb_data_type *)platform_get_drvdata(pdev);
 
-	mutex_lock(&mfd->dma->ov_mutex);
-
 	vctrl = &vsync_ctrl_db[cndx];
 	pipe = vctrl->base_pipe;
 	if (pipe == NULL) {
 		pr_err("%s: NO base pipe\n", __func__);
-		mutex_unlock(&mfd->dma->ov_mutex);
 		return ret;
 	}
 
 	need_wait = 0;
 	mutex_lock(&vctrl->update_lock);
+	atomic_set(&vctrl->suspend, 1);
 
 	complete_all(&vctrl->vsync_comp);
 
@@ -1114,6 +1111,14 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 		pr_err("%s: Error, SET_CLK_OFF by force\n", __func__);
 	}
 
+	/* sanity check, free pipes besides base layer */
+	mdp4_overlay_unset_mixer(pipe->mixer_num);
+	mdp4_mixer_stage_down(pipe, 1);
+	if (mfd->ref_cnt == 0) {
+		mdp4_overlay_pipe_free(pipe, 1);
+		vctrl->base_pipe = NULL;
+	}
+
 	if (vctrl->vsync_enabled) {
 		vsync_irq_disable(INTR_PRIMARY_RDPTR, MDP_PRIM_RDPTR_TERM);
 		vctrl->vsync_enabled = 0;
@@ -1130,41 +1135,33 @@ int mdp4_dsi_cmd_off(struct platform_device *pdev)
 		mdp4_dsi_cmd_pipe_clean(vp);
 	}
 
+	pr_debug("%s-:\n", __func__);
+	return ret;
+}
+
+void mdp_dsi_cmd_overlay_suspend(struct msm_fb_data_type *mfd)
+{
+	int cndx = 0;
+	struct vsycn_ctrl *vctrl;
+	struct mdp4_overlay_pipe *pipe;
+
+	vctrl = &vsync_ctrl_db[cndx];
+	pipe = vctrl->base_pipe;
+	/* dis-engage rgb0 from mixer0 */
 	if (pipe) {
-		/* sanity check, free pipes besides base layer */
-		mixer = pipe->mixer_num;
-		mdp4_overlay_unset_mixer(mixer);
 		if (mfd->ref_cnt == 0) {
 			/* adb stop */
 			if (pipe->pipe_type == OVERLAY_TYPE_BF)
 				mdp4_overlay_borderfill_stage_down(pipe);
 
-			/* base pipe may change after borderfill_stage_down */
-			pipe = vctrl->base_pipe;
-			mdp4_mixer_stage_down(pipe, 1);
-			mdp4_overlay_pipe_free(pipe);
+			/* pipe == rgb1 */
+			mdp4_overlay_unset_mixer(pipe->mixer_num);
 			vctrl->base_pipe = NULL;
 		} else {
-			/* system suspending */
 			mdp4_mixer_stage_down(pipe, 1);
 			mdp4_overlay_iommu_pipe_free(pipe->pipe_ndx, 1);
 		}
 	}
-
-	atomic_set(&vctrl->suspend, 1);
-
-	/*
-	 * clean up ion freelist
-	 * there need two stage to empty ion free list
-	 * therefore need call unmap freelist twice
-	 */
-	mdp4_overlay_iommu_unmap_freelist(mixer);
-	mdp4_overlay_iommu_unmap_freelist(mixer);
-
-	mutex_unlock(&mfd->dma->ov_mutex);
-
-	pr_debug("%s-:\n", __func__);
-	return ret;
 }
 
 static int mdp4_dsi_cmd_clk_check(struct vsycn_ctrl *vctrl)
