@@ -270,7 +270,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 				read_unlock(&tasklist_lock);
 				return 0;
 		}
-		
+
 		oom_score_adj = p->signal->oom_score_adj;
 		if (oom_score_adj < min_score_adj) {
 			task_unlock(p);
@@ -370,7 +370,7 @@ static int lowmem_shrink(struct shrinker *s, struct shrink_control *sc)
 #ifdef ENHANCED_LMK_ROUTINE
 	for (i = 0; i < LOWMEM_DEATHPENDING_DEPTH; i++) {
 		if (selected[i]) {
-#ifdef CONFIG_SAMP_HOTNESS			
+#ifdef CONFIG_SAMP_HOTNESS
 			lowmem_print(1, "send sigkill to %d (%s), adj %d,\
 				     size %d, free memory = %d, reclaimable memory = %d ,hotness %d\n",
 				     selected[i]->pid, selected[i]->comm,
