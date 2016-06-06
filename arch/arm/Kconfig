@@ -1909,6 +1909,11 @@ source "mm/Kconfig"
 
 config ARCH_MEMORY_PROBE
 	def_bool n
+	depends on ENABLE_VMALLOC_SAVING=n
+
+config ENABLE_VMALLOC_SAVING
+	def_bool n
+	depends on DONT_MAP_HOLE_AFTER_MEMBANK0=n
 
 config ARCH_MEMORY_REMOVE
 	def_bool n
