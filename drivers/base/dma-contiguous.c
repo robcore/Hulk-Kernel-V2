@@ -369,6 +369,13 @@ error:
 	return NULL;
 }
 
+phys_addr_t cma_get_base(struct device *dev)
+{
+	struct cma *cma = dev_get_cma_area(dev);
+
+	return cma->base_pfn << PAGE_SHIFT;
+}
+
 /**
  * dma_release_from_contiguous() - release allocated pages
  * @dev:   Pointer to device for which the pages were allocated.
