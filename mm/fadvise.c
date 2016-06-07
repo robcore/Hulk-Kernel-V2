@@ -27,8 +27,7 @@
  */
 SYSCALL_DEFINE(fadvise64_64)(int fd, loff_t offset, loff_t len, int advice)
 {
-	int fput_needed;
-	struct file *file = fget_light(fd, &fput_needed);
+	struct file *file = fget(fd);
 	struct address_space *mapping;
 	struct backing_dev_info *bdi;
 	loff_t endbyte;			/* inclusive */
@@ -95,6 +94,11 @@ SYSCALL_DEFINE(fadvise64_64)(int fd, loff_t offset, loff_t len, int advice)
 		spin_unlock(&file->f_lock);
 		break;
 	case POSIX_FADV_WILLNEED:
+		if (!mapping->a_ops->readpage) {
+			ret = -EINVAL;
+			break;
+		}
+
 		/* First and last PARTIAL page! */
 		start_index = offset >> PAGE_CACHE_SHIFT;
 		end_index = endbyte >> PAGE_CACHE_SHIFT;
@@ -103,13 +107,12 @@ SYSCALL_DEFINE(fadvise64_64)(int fd, loff_t offset, loff_t len, int advice)
 		nrpages = end_index - start_index + 1;
 		if (!nrpages)
 			nrpages = ~0UL;
-
-		/*
-		 * Ignore return value because fadvise() shall return
-		 * success even if filesystem can't retrieve a hint,
-		 */
-		force_page_cache_readahead(mapping, file, start_index,
-					   nrpages);
+		
+		ret = force_page_cache_readahead(mapping, file,
+				start_index,
+				nrpages);
+		if (ret > 0)
+			ret = 0;
 		break;
 	case POSIX_FADV_NOREUSE:
 		break;
@@ -143,7 +146,7 @@ SYSCALL_DEFINE(fadvise64_64)(int fd, loff_t offset, loff_t len, int advice)
 		ret = -EINVAL;
 	}
 out:
-	fput_light(file, fput_needed);
+	fput(file);
 	return ret;
 }
 #ifdef CONFIG_HAVE_SYSCALL_WRAPPERS
