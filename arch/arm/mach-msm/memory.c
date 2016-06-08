@@ -123,26 +123,6 @@ char *memtype_name[] = {
 
 struct reserve_info *reserve_info;
 
-static unsigned long stable_size(struct membank *mb,
-	unsigned long unstable_limit)
-{
-	unsigned long upper_limit = mb->start + mb->size;
-
-	if (!unstable_limit)
-		return mb->size;
-
-	/* Check for 32 bit roll-over */
-	if (upper_limit >= mb->start) {
-		/* If we didn't roll over we can safely make the check below */
-		if (upper_limit <= unstable_limit)
-			return mb->size;
-	}
-
-	if (mb->start >= unstable_limit)
-		return 0;
-	return unstable_limit - mb->start;
-}
-
 static void __init calculate_reserve_limits(void)
 {
 	struct memblock_region *mr;
@@ -210,6 +190,10 @@ static void __init reserve_memory_for_mempools(void)
 		BUG_ON(mr_candidate == NULL);
 		/* bump mt up against the top of the region */
 		mt->start = mr_candidate->base + mr_candidate->size - mt->size;
+		ret = memblock_reserve(mt->start, mt->size);
+		BUG_ON(ret);
+		ret = memblock_free(mt->start, mt->size);
+		BUG_ON(ret);
 		ret = memblock_remove(mt->start, mt->size);
 		BUG_ON(ret);
 	}
