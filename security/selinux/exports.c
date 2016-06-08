@@ -19,7 +19,7 @@
 bool selinux_is_enabled(void)
 {
 #ifdef CONFIG_ALWAYS_ENFORCE
-	return false;
+	return true;
 #else
 	return selinux_enabled;
 #endif
