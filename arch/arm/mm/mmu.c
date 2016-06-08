@@ -930,10 +930,6 @@ void __init sanity_check_meminfo(void)
 {
 	int i, j, highmem = 0;
 
-#ifdef CONFIG_DONT_MAP_HOLE_AFTER_MEMBANK0
-	find_memory_hole();
-#endif
-
 #ifdef CONFIG_ENABLE_VMALLOC_SAVING
 	unsigned long hole_start;
 	for (i = 0; i < (meminfo.nr_banks - 1); i++) {
@@ -947,7 +943,7 @@ void __init sanity_check_meminfo(void)
 	}
 #endif
 #ifdef CONFIG_DONT_MAP_HOLE_AFTER_MEMBANK0
-	find_membank0_hole();
+	find_memory_hole();
 #endif
 
 #if (defined CONFIG_HIGHMEM) && (defined CONFIG_FIX_MOVABLE_ZONE)
