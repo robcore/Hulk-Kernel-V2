@@ -214,10 +214,10 @@ static int proc_pid_cmdline(struct task_struct *task, char * buffer)
 		goto out_mm;	/* Shh! No looking before we're done */
 
  	len = mm->arg_end - mm->arg_start;
- 
+
 	if (len > PAGE_SIZE)
 		len = PAGE_SIZE;
- 
+
 	res = access_process_vm(task, mm->arg_start, buffer, len, 0);
 
 	// If the nul at the end of args has been overwritten, then
@@ -954,13 +954,15 @@ static ssize_t oom_adjust_write(struct file *file, const char __user *buf,
 	 * Scale /proc/pid/oom_score_adj appropriately ensuring that a maximum
 	 * value is always attainable.
 	 */
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
+	delete_from_adj_tree(task);
+#endif
 	if (task->signal->oom_adj == OOM_ADJUST_MAX)
 		task->signal->oom_score_adj = OOM_SCORE_ADJ_MAX;
 	else
 		task->signal->oom_score_adj = (oom_adjust * OOM_SCORE_ADJ_MAX) /
 								-OOM_DISABLE;
 #ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
-	delete_from_adj_tree(task);
 	add_2_adj_tree(task);
 #endif
 	trace_oom_score_adj_update(task);
@@ -1116,9 +1118,12 @@ static ssize_t oom_score_adj_write(struct file *file, const char __user *buf,
 		goto err_sighand;
 	}
 
-	task->signal->oom_score_adj = oom_score_adj;
 #ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
 	delete_from_adj_tree(task);
+#endif
+
+	task->signal->oom_score_adj = oom_score_adj;
+#ifdef CONFIG_ANDROID_LMK_ADJ_RBTREE
 	add_2_adj_tree(task);
 #endif
 	if (has_capability_noaudit(current, CAP_SYS_RESOURCE))
@@ -2515,7 +2520,7 @@ out:
 	return error;
 }
 
-static struct dentry *proc_pident_lookup(struct inode *dir, 
+static struct dentry *proc_pident_lookup(struct inode *dir,
 					 struct dentry *dentry,
 					 const struct pid_entry *ents,
 					 unsigned int nents)
