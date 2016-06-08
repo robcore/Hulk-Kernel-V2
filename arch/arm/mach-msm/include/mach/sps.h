@@ -30,6 +30,15 @@
  * from flags and 36bit physical address */
 #define DESC_FLAG_WORD(flags, addr) (((addr & 0xF00000000ULL) >> 32) | flags)
 
+/**
+ * Vote for or relinquish BAM DMA clock
+ *
+ * @clk_on - to turn on or turn off the clock
+ *
+ * @return 0 on success, negative value on error
+ *
+ */
+int sps_ctrl_bam_dma_clk(bool clk_on);
 #else
 
 #define SPS_GET_UPPER_ADDR(addr) (0)
@@ -1479,6 +1488,11 @@ static inline int sps_get_unused_desc_num(struct sps_pipe *h, u32 *desc_num)
 
 static inline int sps_get_bam_debug_info(u32 dev, u32 option, u32 para,
 		u32 tb_sel, u32 desc_sel)
+{
+	return -EPERM;
+}
+
+static inline int sps_ctrl_bam_dma_clk(bool clk_on)
 {
 	return -EPERM;
 }
