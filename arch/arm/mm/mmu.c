@@ -222,7 +222,7 @@ static struct mem_type mem_types[] = {
 		.prot_l1	= PMD_TYPE_TABLE,
 		.prot_sect	= PROT_SECT_DEVICE | PMD_SECT_WB,
 		.domain		= DOMAIN_IO,
-	},	
+	},
 	[MT_DEVICE_WC] = {	/* ioremap_wc */
 		.prot_pte	= PROT_PTE_DEVICE | L_PTE_MT_DEV_WC,
 		.prot_l1	= PMD_TYPE_TABLE,
@@ -946,10 +946,6 @@ void __init sanity_check_meminfo(void)
 	find_memory_hole();
 #endif
 
-#if (defined CONFIG_HIGHMEM) && (defined CONFIG_FIX_MOVABLE_ZONE)
-	if (movable_reserved_size && __pa(vmalloc_min) > movable_reserved_start)
-		vmalloc_min = __va(movable_reserved_start);
-#endif
 	for (i = 0, j = 0; i < meminfo.nr_banks; i++) {
 		struct membank *bank = &meminfo.bank[j];
 		*bank = meminfo.bank[i];
@@ -1461,7 +1457,7 @@ void __init paging_init(struct machine_desc *mdesc)
 	{
 	        /**TIMA_MAGIC*/
 	        void *mem_alloc_ptr;
-		unsigned int phy_addr; 
+		unsigned int phy_addr;
 		mem_alloc_ptr = early_alloc(0x200000);
 		phy_addr = __pa(mem_alloc_ptr);
 		printk(KERN_ERR"===TIMA===NEW=== -> mem_alloc_ptr= %p pa = %x\n", mem_alloc_ptr, phy_addr);
