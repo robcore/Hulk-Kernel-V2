@@ -1,8 +1,8 @@
 #!/bin/bash
-for file in /media/root/robcore/android/Alucard-Kernel-jfltexx-my-tw-5.0/patches/wq/*
+for file in /media/root/robcore/android/Hulk-Kernel-V2-ref/patches/*
 do
 case "$file" in
-     *.patch) patch -p1 -N < "$file" ;;
+     *.patch) patch -p1 -N --dry-run < "$file" ;;
      *) ;;
 esac
 done
