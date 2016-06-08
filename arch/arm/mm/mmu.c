@@ -931,7 +931,7 @@ void __init sanity_check_meminfo(void)
 	int i, j, highmem = 0;
 
 #ifdef CONFIG_DONT_MAP_HOLE_AFTER_MEMBANK0
-	find_membank0_hole();
+	find_memory_hole();
 #endif
 
 #ifdef CONFIG_ENABLE_VMALLOC_SAVING

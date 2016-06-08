@@ -276,6 +276,7 @@ config ARCH_MSM8974
 	select MSM_RPM_REGULATOR_SMD
 	select ARM_HAS_SG_CHAIN
 	select MSM_RUN_QUEUE_STATS
+	select DONT_MAP_HOLE_AFTER_MEMBANK0
 	select HAS_MACH_MEMUTILS
 
 config ARCH_MPQ8092
@@ -881,13 +882,13 @@ config MACH_GOLDEN_ATT
 	bool "MSM8930 GOLDEN ATT"
 	help
 	  Support for the Samsung Golden device.
-	  
+
  config MACH_GOLDEN_BMC
         depends on MACH_GOLDEN
         bool "MSM8930 GOLDEN BMC"
         help
           Support for the Samsung Golden device.
-		  
+
 config MACH_MELIUS
 	depends on ARCH_MSM8930
 	bool "MSM8930 MELIUS"
@@ -985,13 +986,13 @@ config MACH_LT02_SPR
 	bool "MSM8930 LT02 SPR"
 	help
 	  Support for the Samsung LT02(Tablet) device.
-	  
+
 config MACH_LT02_TMO
 	depends on MACH_LT02
 	bool "MSM8930 LT02 TMO"
 	help
 	  Support for the Samsung LT02(Tablet) device.
-	  
+
 config MACH_SERRANO_LRA
 	depends on MACH_SERRANO
 	bool "MSM8930 SERRANO LRA"
@@ -1329,7 +1330,7 @@ config TARGET_LOCALE_JPN
 	help
 	  Enable LOCALE JPN.
 	  used to distinguish LOCALE-related differences.
-	  
+
 endmenu
 
 config MSM_STACKED_MEMORY
@@ -2044,11 +2045,11 @@ config ZEN_DECISION
 	  ZenDecision is a "handler" to account for behavior caused by
 	  disabling some of these services.
 
-	  For example, If MPDecision is disabled and MSM-Thermal_Engine is 
+	  For example, If MPDecision is disabled and MSM-Thermal_Engine is
 	  enabled in the userspace. Situations where CPUs go offline but never
 	  come back online occur. ZenDecision handles the situation of CPUs
 	  never coming online when they are supposed.
-  
+
 	  ZenDecision ensures all CPUs are online when they are supposed to be by:
 	  - Enable all CPUs when screen comes on after wake_wait_delay
 	  - Ignore all CPU_UP operations when battery level is <= 15% to respect
@@ -3146,7 +3147,7 @@ config SEC_THERMISTOR
 	default n
 	help
 	Use thermistor driver for checking temperature near AP chip.
-	  
+
 config EXT_MAINMIC_BIAS
 	depends on ARCH_MSM8930
 	default n
@@ -3237,7 +3238,7 @@ config 2MIC_QUP_I2C_GSBI2
          Say Y here if you want use 2MIC QUP GSBI2.
 	 To compile this option, choose M here:
 	 If unsure, say N here.
-	 
+
 config EXT_ADC_IC
        	depends on ARCH_MSM8930
 	default n
@@ -3312,7 +3313,7 @@ config AUXPCM_INTERFACE
          Say Y here if you want use auxpcm interface for external device.
 	 To compile this option, choose M here:
 	 If unsure, say N here.
-	 
+
 config PCM_ROUTE_VOICE_STUB
 	depends on ARCH_MSM8930
 	default n
