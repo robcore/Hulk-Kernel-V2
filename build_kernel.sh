@@ -21,7 +21,7 @@ make mrproper;
 mkdir $(pwd)/out;
 export ARCH=arm
 export CROSS_COMPILE=/opt/toolchains/arm-cortex_a15-linux-gnueabihf_5.3/bin/arm-cortex_a15-linux-gnueabihf-
-export USE_SEC_FIPS_MODE=true
+#export USE_SEC_FIPS_MODE=true
 export KCONFIG_NOTIMESTAMP=true
 cp $(pwd)/arch/arm/configs/OK3_defconfig $(pwd)/out/.config;
 make ARCH=arm -j7 O=$(pwd)/out oldconfig;
@@ -38,5 +38,12 @@ cp /media/root/robcore/android/Hulk-Kernel-V2/arch/arm/boot/frandom.ko $(pwd)/hu
 rm $(pwd)/split_img/boot.img-zImage;
 cp /media/root/robcore/android/Hulk-Kernel-V2/arch/arm/boot/boot.img-zImage $(pwd)/split_img/boot.img-zImage;
 rm image-new.img;
+cp /media/root/robcore/Hulk-Kernel-V2/ramdisk_fix_permissions.sh $(pwd)/ramdisk/ramdisk_fix_permissions.sh;
+chmod 755 $(pwd)/ramdisk/ramdisk_fix_permissions.sh;
+chown root:root $(pwd)/ramdisk/ramdisk_fix_permissions.sh;
+cd $(pwd)/ramdisk;
+sh ramdisk_fix_permissions.sh;
+rm ramdisk_fix_permissions.sh;
+cd ../
 sh repackimg.sh;
 cp image-new.img $(pwd)/hulk-new/boot.img
