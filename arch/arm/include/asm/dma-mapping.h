@@ -13,6 +13,7 @@
 
 #define DMA_ERROR_CODE	(~0)
 extern struct dma_map_ops arm_dma_ops;
+extern struct dma_map_ops arm_coherent_dma_ops;
 
 static inline struct dma_map_ops *get_dma_ops(struct device *dev)
 {
@@ -124,10 +125,7 @@ static inline void dma_coherent_pre_ops(void)
 #if COHERENT_IS_NORMAL == 1
 	dmb();
 #else
-	if (arch_is_coherent())
-		dmb();
-	else
-		barrier();
+	barrier();
 #endif
 }
 /*
@@ -141,10 +139,7 @@ static inline void dma_coherent_post_ops(void)
 #if COHERENT_IS_NORMAL == 1
 	dmb();
 #else
-	if (arch_is_coherent())
-		dmb();
-	else
-		barrier();
+	barrier();
 #endif
 }
 
@@ -226,17 +221,6 @@ extern int arm_dma_mmap(struct device *dev, struct vm_area_struct *vma,
 			void *cpu_addr, dma_addr_t dma_addr, size_t size,
 			struct dma_attrs *attrs);
 
-#define dma_mmap_coherent(d, v, c, h, s) dma_mmap_attrs(d, v, c, h, s, NULL)
-
-static inline int dma_mmap_attrs(struct device *dev, struct vm_area_struct *vma,
-				  void *cpu_addr, dma_addr_t dma_addr,
-				  size_t size, struct dma_attrs *attrs)
-{
-	struct dma_map_ops *ops = get_dma_ops(dev);
-	BUG_ON(!ops);
-	return ops->mmap(dev, vma, cpu_addr, dma_addr, size, attrs);
-}
-
 static inline void *dma_alloc_writecombine(struct device *dev, size_t size,
 				       dma_addr_t *dma_handle, gfp_t flag)
 {
@@ -251,14 +235,6 @@ static inline void dma_free_writecombine(struct device *dev, size_t size,
 	DEFINE_DMA_ATTRS(attrs);
 	dma_set_attr(DMA_ATTR_WRITE_COMBINE, &attrs);
 	return dma_free_attrs(dev, size, cpu_addr, dma_handle, &attrs);
-}
-
-static inline int dma_mmap_writecombine(struct device *dev, struct vm_area_struct *vma,
-		      void *cpu_addr, dma_addr_t dma_addr, size_t size)
-{
-	DEFINE_DMA_ATTRS(attrs);
-	dma_set_attr(DMA_ATTR_WRITE_COMBINE, &attrs);
-	return dma_mmap_attrs(dev, vma, cpu_addr, dma_addr, size, &attrs);
 }
 
 static inline void *dma_alloc_stronglyordered(struct device *dev, size_t size,
@@ -380,8 +356,7 @@ static inline void dma_cache_pre_ops(void *virtual_addr,
 
 	BUG_ON(!valid_dma_direction(dir));
 
-	if (!arch_is_coherent())
-		___dma_single_cpu_to_dev(virtual_addr, size, dir);
+	___dma_single_cpu_to_dev(virtual_addr, size, dir);
 }
 
 /**
@@ -403,8 +378,7 @@ static inline void dma_cache_post_ops(void *virtual_addr,
 
 	BUG_ON(!valid_dma_direction(dir));
 
-	if (arch_has_speculative_dfetch() && !arch_is_coherent()
-	 && dir != DMA_TO_DEVICE)
+	if (arch_has_speculative_dfetch() && dir != DMA_TO_DEVICE)
 		/*
 		 * Treat DMA_BIDIRECTIONAL and DMA_FROM_DEVICE
 		 * identically: invalidate
@@ -423,6 +397,9 @@ extern void arm_dma_sync_sg_for_cpu(struct device *, struct scatterlist *, int,
 		enum dma_data_direction);
 extern void arm_dma_sync_sg_for_device(struct device *, struct scatterlist *, int,
 		enum dma_data_direction);
+extern int arm_dma_get_sgtable(struct device *dev, struct sg_table *sgt,
+		void *cpu_addr, dma_addr_t dma_addr, size_t size,
+		struct dma_attrs *attrs);
 
 #endif /* __KERNEL__ */
 #endif
