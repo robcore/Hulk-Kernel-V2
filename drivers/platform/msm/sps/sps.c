@@ -582,18 +582,21 @@ static void sps_debugfs_init(void)
 		pr_err("sps:fail to create debug_fs file for testbus_sel.\n");
 		goto testbus_sel_err;
 	}
+
 	dfile_bam_pipe_sel = debugfs_create_u32("bam_pipe_sel", 0664,
 						dent, &bam_pipe_sel);
 	if (!dfile_bam_pipe_sel || IS_ERR(dfile_bam_pipe_sel)) {
 		pr_err("sps:fail to create debug_fs file for bam_pipe_sel.\n");
 		goto bam_pipe_sel_err;
 	}
+
 	dfile_desc_option = debugfs_create_u32("desc_option", 0664,
 						dent, &desc_option);
 	if (!dfile_desc_option || IS_ERR(dfile_desc_option)) {
 		pr_err("sps:fail to create debug_fs file for desc_option.\n");
 		goto desc_option_err;
 	}
+
 	dfile_bam_addr = debugfs_create_file("bam_addr", 0664,
 			dent, 0, &sps_bam_addr_ops);
 	if (!dfile_bam_addr || IS_ERR(dfile_bam_addr)) {
@@ -2023,35 +2026,6 @@ int sps_ctrl_bam_dma_clk(bool clk_on)
 		SPS_DBG2("sps:%s:sps driver is not ready.\n", __func__);
 		return -EPROBE_DEFER;
 	}
-
-	if (clk_on == true) {
-		SPS_DBG("sps:vote for bam dma clk.\n");
-		ret = clk_prepare_enable(sps->bamdma_clk);
-		if (ret) {
-			SPS_ERR("sps:fail to enable bamdma_clk:ret=%d\n", ret);
-			return ret;
-		}
-	} else {
-		SPS_DBG("sps:relinquish bam dma clk.\n");
-		clk_disable_unprepare(sps->bamdma_clk);
-	}
-
-	return 0;
-}
-EXPORT_SYMBOL(sps_ctrl_bam_dma_clk);
-
-/**
- * Vote for or relinquish BAM DMA clock
- *
- */
-int sps_ctrl_bam_dma_clk(bool clk_on)
-{
-	int ret;
-
-	SPS_DBG("sps:%s.", __func__);
-
-	if (!sps->is_ready)
-		return -EPROBE_DEFER;
 
 	if (clk_on == true) {
 		SPS_DBG("sps:vote for bam dma clk.\n");
