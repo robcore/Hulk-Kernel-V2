@@ -289,6 +289,12 @@ static void __dma_free_buffer(struct page *page, size_t size)
 #ifdef CONFIG_HUGETLB_PAGE
 #error ARM Coherent DMA allocator does not (yet) support huge TLB
 #endif
+
+static void *__alloc_from_contiguous(struct device *dev, size_t size,
+				     pgprot_t prot, struct page **ret_page,
+				     const void *caller,
+				     struct dma_attrs *attrs);
+
 static void *__alloc_remap_buffer(struct device *dev, size_t size, gfp_t gfp,
 				 pgprot_t prot, struct page **ret_page,
 				 const void *caller);
@@ -310,14 +316,13 @@ __dma_alloc_remap(struct page *page, size_t size, gfp_t gfp, pgprot_t prot,
 		return NULL;
 	addr = (unsigned long)area->addr;
 	area->phys_addr = __pfn_to_phys(page_to_pfn(page));
-		return 0;
 
 	if (ioremap_page_range(addr, addr + size, area->phys_addr, prot)) {
 		vunmap((void *)addr);
 		return NULL;
- 	}
-	return (void *)addr;
 	}
+	return (void *)addr;
+}
 
 static void __dma_free_remap(void *cpu_addr, size_t size, bool no_warn)
 {
@@ -341,6 +346,7 @@ struct dma_pool {
 	unsigned long nr_pages;
 	void *vaddr;
 	struct page **pages;
+};
 
 static struct dma_pool atomic_pool = {
 	.size = DEFAULT_DMA_COHERENT_POOL_SIZE,
@@ -372,12 +378,13 @@ void __init init_dma_coherent_pool_size(unsigned long size)
  * Initialise the coherent pool for atomic allocations.
  */
 static int __init atomic_pool_init(void)
- {
+{
 	struct dma_pool *pool = &atomic_pool;
 	pgprot_t prot = pgprot_dmacoherent(PAGE_KERNEL);
 	gfp_t gfp = GFP_KERNEL | GFP_DMA;
 	unsigned long nr_pages = pool->size >> PAGE_SHIFT;
 	unsigned long *bitmap;
+	struct page *page;
 	struct page **pages;
 	void *ptr;
 	int bitmap_size = BITS_TO_LONGS(nr_pages) * sizeof(long);
@@ -392,11 +399,11 @@ static int __init atomic_pool_init(void)
 
 	if (IS_ENABLED(CONFIG_CMA))
 		ptr = __alloc_from_contiguous(NULL, pool->size, prot, &page,
-						  atomic_pool_init, NULL);
+					      atomic_pool_init, NULL);
 	else
 		ptr = __alloc_remap_buffer(NULL, pool->size, gfp, prot, &page,
-					      atomic_pool_init);
- 	if (ptr) {
+					   atomic_pool_init);
+	if (ptr) {
 		int i;
 
 		for (i = 0; i < nr_pages; i++)
@@ -461,7 +468,7 @@ void __init dma_contiguous_remap(void)
 		map.type = MT_MEMORY_DMA_READY;
 
 		/*
-		 *  Clear previous low-memory mapping to ensure that the
+		 * Clear previous low-memory mapping to ensure that the
 		 * TLB does not see any conflicting entries, then flush
 		 * the TLB of the old entries before creating new mappings.
 		 *
@@ -515,11 +522,6 @@ static void __dma_remap(struct page *page, size_t size, pgprot_t prot,
 	flush_tlb_kernel_range(start, end);
 }
 
-static void *__alloc_from_contiguous(struct device *dev, size_t size,
-				     pgprot_t prot, struct page **ret_page,
-				     const void *caller,
-				     struct dma_attrs *attrs);
-
 static void *__alloc_remap_buffer(struct device *dev, size_t size, gfp_t gfp,
 				 pgprot_t prot, struct page **ret_page,
 				 const void *caller)
@@ -557,26 +559,26 @@ static void *__alloc_from_pool(size_t size, struct page **ret_page)
 	/*
 	 * Align the region allocation - allocations from pool are rather
 	 * small, so align them to their order in pages, minimum is a page
- 	 * size. This helps reduce fragmentation of the DMA space.
- 	 */
- 	align_mask = (1 << get_order(size)) - 1;
+	 * size. This helps reduce fragmentation of the DMA space.
+	 */
+	align_mask = (1 << get_order(size)) - 1;
 
- 	spin_lock_irqsave(&pool->lock, flags);
- 	pageno = bitmap_find_next_zero_area(pool->bitmap, pool->nr_pages,
+	spin_lock_irqsave(&pool->lock, flags);
+	pageno = bitmap_find_next_zero_area(pool->bitmap, pool->nr_pages,
 					    0, count, align_mask);
- 	if (pageno < pool->nr_pages) {
- 		bitmap_set(pool->bitmap, pageno, count);
- 		ptr = pool->vaddr + PAGE_SIZE * pageno;
+	if (pageno < pool->nr_pages) {
+		bitmap_set(pool->bitmap, pageno, count);
+		ptr = pool->vaddr + PAGE_SIZE * pageno;
 		*ret_page = pool->pages[pageno];
 	} else {
 		pr_err_once("ERROR: %u KiB atomic DMA coherent pool is too small!\n"
 			    "Please increase it with coherent_pool= kernel parameter!\n",
 			    (unsigned)pool->size / 1024);
- 	}
- 	spin_unlock_irqrestore(&pool->lock, flags);
+	}
+	spin_unlock_irqrestore(&pool->lock, flags);
 
- 	return ptr;
- }
+	return ptr;
+}
 
 static bool __in_atomic_pool(void *start, size_t size)
 {
@@ -604,7 +606,7 @@ static int __free_from_pool(void *start, size_t size)
 	unsigned long flags;
 
 	if (!__in_atomic_pool(start, size))
- 		return 0;
+		return 0;
 
 	pageno = (start - pool->vaddr) >> PAGE_SHIFT;
 	count = size >> PAGE_SHIFT;
@@ -613,7 +615,7 @@ static int __free_from_pool(void *start, size_t size)
 	bitmap_clear(pool->bitmap, pageno, count);
 	spin_unlock_irqrestore(&pool->lock, flags);
 
- 	return 1;
+	return 1;
 }
 
 #define NO_KERNEL_MAPPING_DUMMY	0x2222
@@ -632,7 +634,7 @@ static void *__alloc_from_contiguous(struct device *dev, size_t size,
 
 	pfn = dma_alloc_from_contiguous(dev, count, order);
 	if (!pfn)
- 		return NULL;
+		return NULL;
 
 	page = pfn_to_page(pfn);
 
@@ -640,9 +642,9 @@ static void *__alloc_from_contiguous(struct device *dev, size_t size,
  		__dma_clear_buffer(page, size);
 
 	if (PageHighMem(page)) {
- 		if (no_kernel_mapping) {
- 			/*
- 			 * Something non-NULL needs to be returned here. Give
+		if (no_kernel_mapping) {
+			/*
+			 * Something non-NULL needs to be returned here. Give
 			 * back a dummy address that is unmapped to catch
 			 * clients trying to use the address incorrectly
 			 */
@@ -652,26 +654,26 @@ static void *__alloc_from_contiguous(struct device *dev, size_t size,
 						caller);
 			if (!ptr) {
 				dma_release_from_contiguous(dev, pfn, count);
- 				return NULL;
- 			}
- 		}
+				return NULL;
+			}
+		}
 	} else {
 		__dma_remap(page, size, prot, no_kernel_mapping);
 		ptr = page_address(page);
- 	}
- 	*ret_page = page;
+	}
+	*ret_page = page;
 	return ptr;
 }
 
- static void __free_from_contiguous(struct device *dev, struct page *page,
- 				   void *cpu_addr, size_t size)
- {
+static void __free_from_contiguous(struct device *dev, struct page *page,
+				   void *cpu_addr, size_t size)
+{
 	if (PageHighMem(page))
- 		__dma_free_remap(cpu_addr, size, true);
+		__dma_free_remap(cpu_addr, size, true);
 	else
 		__dma_remap(page, size, PAGE_KERNEL, false);
 	dma_release_from_contiguous(dev, page_to_pfn(page), size >> PAGE_SHIFT);
- }
+}
 
 static inline pgprot_t __get_dma_pgprot(struct dma_attrs *attrs, pgprot_t prot)
 {
@@ -747,38 +749,23 @@ static void *__dma_alloc(struct device *dev, size_t size, dma_addr_t *handle,
 	 */
 	gfp &= ~(__GFP_COMP);
 
- 	*handle = DMA_ERROR_CODE;
- 	size = PAGE_ALIGN(size);
+	*handle = DMA_ERROR_CODE;
+	size = PAGE_ALIGN(size);
 
 	if (is_coherent || nommu())
- 		addr = __alloc_simple_buffer(dev, size, gfp, &page);
+		addr = __alloc_simple_buffer(dev, size, gfp, &page);
 	else if (!(gfp & __GFP_WAIT))
- 		addr = __alloc_from_pool(size, &page);
- 	else if (!IS_ENABLED(CONFIG_CMA))
- 		addr = __alloc_remap_buffer(dev, size, gfp, prot, &page, caller);
- 	else
+		addr = __alloc_from_pool(size, &page);
+	else if (!IS_ENABLED(CONFIG_CMA))
+		addr = __alloc_remap_buffer(dev, size, gfp, prot, &page, caller);
+	else
 		addr = __alloc_from_contiguous(dev, size, prot, &page, caller,
 						attrs);
 
- 	if (addr)
- 		*handle = pfn_to_dma(dev, page_to_pfn(page));
+	if (addr)
+		*handle = pfn_to_dma(dev, page_to_pfn(page));
 
 	return addr;
-}
-
-void __init init_dma_coherent_pool_size(unsigned long size)
-{
-	/*
-	 * Catch any attempt to set the pool size too late.
-	 */
-	BUG_ON(atomic_pool.vaddr);
-
-	/*
-	 * Set architecture specific coherent pool size only if
-	 * it has not been changed by kernel command line parameter.
-	 */
-	if (atomic_pool.size == DEFAULT_DMA_COHERENT_POOL_SIZE)
-		atomic_pool.size = size;
 }
 
 /*
