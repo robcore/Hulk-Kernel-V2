@@ -1,7 +1,6 @@
 #!/bin/bash
 rm -rf $(pwd)/out;
 rm $(pwd)/arch/arm/boot/dhd.ko;
-rm $(pwd)/arch/arm/boot/frandom.ko;
 rm $(pwd)/arch/arm/boot/boot.img-zImage;
 # clean up leftover junk
 find . -type f \( -iname \*.rej \
