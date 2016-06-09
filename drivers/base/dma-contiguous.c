@@ -476,16 +476,17 @@ core_initcall(cma_init_reserved_areas);
  * global one. Requires architecture specific get_dev_cma_area() helper
  * function.
  */
-unsigned long dma_alloc_from_contiguous(struct device *dev, int count,
+struct page *dma_alloc_from_contiguous(struct device *dev, int count,
 				       unsigned int align)
 {
-	unsigned long mask, pfn = 0, pageno, start = 0;
+	unsigned long mask, pfn, pageno, start = 0;
 	struct cma *cma = dev_get_cma_area(dev);
+	struct page *page = NULL;
 	int ret = 0;
 	int tries = 0;
 
 	if (!cma || !cma->count)
-		return 0;
+		return NULL;
 
 	if (align > CONFIG_CMA_ALIGNMENT)
 		align = CONFIG_CMA_ALIGNMENT;
@@ -494,7 +495,7 @@ unsigned long dma_alloc_from_contiguous(struct device *dev, int count,
 		 count, align);
 
 	if (!count)
-		return 0;
+		return NULL;
 
 	mask = (1 << align) - 1;
 
@@ -547,15 +548,18 @@ phys_addr_t cma_get_base(struct device *dev)
  * It returns false when provided pages do not belong to contiguous area and
  * true otherwise.
  */
-bool dma_release_from_contiguous(struct device *dev, unsigned long pfn,
+bool dma_release_from_contiguous(struct device *dev, struct page *pages,
 				 int count)
 {
 	struct cma *cma = dev_get_cma_area(dev);
+	unsigned long pfn;
 
-	if (!cma || !pfn)
+	if (!cma || !pages)
 		return false;
 
-	pr_debug("%s(pfn %lx)\n", __func__, pfn);
+	pr_debug("%s(page %p)\n", __func__, (void *)pages);
+
+	pfn = page_to_pfn(pages);
 
 	if (pfn < cma->base_pfn || pfn >= cma->base_pfn + cma->count)
 		return false;

@@ -9,7 +9,6 @@
  *
  *  DMA uncached mapping support.
  */
-#include <linux/bootmem.h>
 #include <linux/module.h>
 #include <linux/mm.h>
 #include <linux/gfp.h>
@@ -73,15 +72,8 @@ static dma_addr_t arm_dma_map_page(struct device *dev, struct page *page,
 	     unsigned long offset, size_t size, enum dma_data_direction dir,
 	     struct dma_attrs *attrs)
 {
-	if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+	if (!arch_is_coherent())
 		__dma_page_cpu_to_dev(page, offset, size, dir);
-	return pfn_to_dma(dev, page_to_pfn(page)) + offset;
-}
-
-static dma_addr_t arm_coherent_dma_map_page(struct device *dev, struct page *page,
-	     unsigned long offset, size_t size, enum dma_data_direction dir,
-	     struct dma_attrs *attrs)
-{
 	return pfn_to_dma(dev, page_to_pfn(page)) + offset;
 }
 
@@ -103,7 +95,7 @@ static void arm_dma_unmap_page(struct device *dev, dma_addr_t handle,
 		size_t size, enum dma_data_direction dir,
 		struct dma_attrs *attrs)
 {
-	if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+	if (!arch_is_coherent())
 		__dma_page_dev_to_cpu(pfn_to_page(dma_to_pfn(dev, handle)),
 				      handle & ~PAGE_MASK, size, dir);
 }
@@ -113,7 +105,8 @@ static void arm_dma_sync_single_for_cpu(struct device *dev,
 {
 	unsigned int offset = handle & (PAGE_SIZE - 1);
 	struct page *page = pfn_to_page(dma_to_pfn(dev, handle-offset));
-	__dma_page_dev_to_cpu(page, offset, size, dir);
+	if (!arch_is_coherent())
+		__dma_page_dev_to_cpu(page, offset, size, dir);
 }
 
 static void arm_dma_sync_single_for_device(struct device *dev,
@@ -121,7 +114,8 @@ static void arm_dma_sync_single_for_device(struct device *dev,
 {
 	unsigned int offset = handle & (PAGE_SIZE - 1);
 	struct page *page = pfn_to_page(dma_to_pfn(dev, handle-offset));
-	__dma_page_cpu_to_dev(page, offset, size, dir);
+	if (!arch_is_coherent())
+		__dma_page_cpu_to_dev(page, offset, size, dir);
 }
 
 static int arm_dma_set_mask(struct device *dev, u64 dma_mask);
@@ -130,7 +124,6 @@ struct dma_map_ops arm_dma_ops = {
 	.alloc			= arm_dma_alloc,
 	.free			= arm_dma_free,
 	.mmap			= arm_dma_mmap,
-	.get_sgtable		= arm_dma_get_sgtable,
 	.map_page		= arm_dma_map_page,
 	.unmap_page		= arm_dma_unmap_page,
 	.map_sg			= arm_dma_map_sg,
@@ -142,60 +135,6 @@ struct dma_map_ops arm_dma_ops = {
 	.set_dma_mask		= arm_dma_set_mask,
 };
 EXPORT_SYMBOL(arm_dma_ops);
-
-static void *arm_coherent_dma_alloc(struct device *dev, size_t size,
-	dma_addr_t *handle, gfp_t gfp, struct dma_attrs *attrs);
-static void arm_coherent_dma_free(struct device *dev, size_t size, void *cpu_addr,
-				  dma_addr_t handle, struct dma_attrs *attrs);
-
-struct dma_map_ops arm_coherent_dma_ops = {
-	.alloc			= arm_coherent_dma_alloc,
-	.free			= arm_coherent_dma_free,
-	.mmap			= arm_dma_mmap,
-	.get_sgtable		= arm_dma_get_sgtable,
-	.map_page		= arm_coherent_dma_map_page,
-	.map_sg			= arm_dma_map_sg,
-	.set_dma_mask		= arm_dma_set_mask,
-};
-EXPORT_SYMBOL(arm_coherent_dma_ops);
-
-static int __dma_supported(struct device *dev, u64 mask, bool warn)
-{
-	unsigned long max_dma_pfn;
-
-	/*
-	 * If the mask allows for more memory than we can address,
-	 * and we actually have that much memory, then we must
-	 * indicate that DMA to this device is not supported.
-	 */
-	if (sizeof(mask) != sizeof(dma_addr_t) &&
-	    mask > (dma_addr_t)~0 &&
-	    dma_to_pfn(dev, ~0) < max_pfn) {
-		if (warn) {
-			dev_warn(dev, "Coherent DMA mask %#llx is larger than dma_addr_t allows\n",
-				 mask);
-			dev_warn(dev, "Driver did not use or check the return value from dma_set_coherent_mask()?\n");
-		}
-		return 0;
-	}
-
-	max_dma_pfn = min(max_pfn, arm_dma_pfn_limit);
-
-	/*
-	 * Translate the device's DMA mask to a PFN limit.  This
-	 * PFN number includes the page which we can DMA to.
-	 */
-	if (dma_to_pfn(dev, mask) < max_dma_pfn) {
-		if (warn)
-			dev_warn(dev, "Coherent DMA mask %#llx (pfn %#lx-%#lx) covers a smaller range of system memory than the DMA zone pfn 0x0-%#lx\n",
-				 mask,
-				 dma_to_pfn(dev, 0), dma_to_pfn(dev, mask) + 1,
-				 max_dma_pfn + 1);
-		return 0;
-	}
-
-	return 1;
-}
 
 static u64 get_coherent_dma_mask(struct device *dev)
 {
@@ -213,8 +152,12 @@ static u64 get_coherent_dma_mask(struct device *dev)
 			return 0;
 		}
 
-		if (!__dma_supported(dev, mask, true))
+		if ((~mask) & (u64)arm_dma_limit) {
+			dev_warn(dev, "coherent DMA mask %#llx is smaller "
+				 "than system GFP_DMA mask %#llx\n",
+				 mask, (u64)arm_dma_limit);
 			return 0;
+		}
 	}
 
 	return mask;
@@ -226,7 +169,14 @@ static void __dma_clear_buffer(struct page *page, size_t size)
 	 * Ensure that the allocated pages are zeroed, and that any data
 	 * lurking in the kernel direct-mapped region is invalidated.
 	 */
-	if (PageHighMem(page)) {
+	if (!PageHighMem(page)) {
+		void *ptr = page_address(page);
+		if (ptr) {
+			memset(ptr, 0, size);
+			dmac_flush_range(ptr, ptr + size);
+			outer_flush_range(__pa(ptr), __pa(ptr) + size);
+		}
+	} else {
 		phys_addr_t base = __pfn_to_phys(page_to_pfn(page));
 		phys_addr_t end = base + size;
 		while (size > 0) {
@@ -238,11 +188,6 @@ static void __dma_clear_buffer(struct page *page, size_t size)
 			size -= PAGE_SIZE;
 		}
 		outer_flush_range(base, end);
-	} else {
-		void *ptr = page_address(page);
-		memset(ptr, 0, size);
-		dmac_flush_range(ptr, ptr + size);
-		outer_flush_range(__pa(ptr), __pa(ptr) + size);
 	}
 }
 
@@ -628,11 +573,6 @@ static void __dma_remap(struct page *page, size_t size, pgprot_t prot,
 	flush_tlb_kernel_range(start, end);
 }
 
-static void *__alloc_from_contiguous(struct device *dev, size_t size,
-				     pgprot_t prot, struct page **ret_page,
-				     const void *caller,
-				     struct dma_attrs *attrs);
-
 static void *__alloc_remap_buffer(struct device *dev, size_t size, gfp_t gfp,
 				 pgprot_t prot, struct page **ret_page,
 				 const void *caller)
@@ -849,21 +789,6 @@ static void *__dma_alloc(struct device *dev, size_t size, dma_addr_t *handle,
 	return addr;
 }
 
-void __init init_dma_coherent_pool_size(unsigned long size)
-{
-	/*
-	 * Catch any attempt to set the pool size too late.
-	 */
-	BUG_ON(atomic_pool.vaddr);
-
-	/*
-	 * Set architecture specific coherent pool size only if
-	 * it has not been changed by kernel command line parameter.
-	 */
-	if (atomic_pool.size == DEFAULT_DMA_COHERENT_POOL_SIZE)
-		atomic_pool.size = size;
-}
-
 /*
  * Allocate DMA-coherent memory space and return both the kernel remapped
  * virtual and bus address for that space.
@@ -892,22 +817,16 @@ int arm_dma_mmap(struct device *dev, struct vm_area_struct *vma,
 {
 	int ret = -ENXIO;
 #ifdef CONFIG_MMU
-	unsigned long nr_vma_pages = (vma->vm_end - vma->vm_start) >> PAGE_SHIFT;
-	unsigned long nr_pages = PAGE_ALIGN(size) >> PAGE_SHIFT;
 	unsigned long pfn = dma_to_pfn(dev, dma_addr);
-	unsigned long off = vma->vm_pgoff;
-
 	vma->vm_page_prot = __get_dma_pgprot(attrs, vma->vm_page_prot);
 
 	if (dma_mmap_from_coherent(dev, vma, cpu_addr, size, &ret))
 		return ret;
 
-	if (off < nr_pages && nr_vma_pages <= (nr_pages - off)) {
-		ret = remap_pfn_range(vma, vma->vm_start,
-				      pfn + off,
-				      vma->vm_end - vma->vm_start,
-				      vma->vm_page_prot);
-	}
+	ret = remap_pfn_range(vma, vma->vm_start,
+			      pfn + vma->vm_pgoff,
+			      vma->vm_end - vma->vm_start,
+			      vma->vm_page_prot);
 #endif	/* CONFIG_MMU */
 
 	return ret;
@@ -916,9 +835,8 @@ int arm_dma_mmap(struct device *dev, struct vm_area_struct *vma,
 /*
  * Free a buffer as defined by the above mapping.
  */
-static void __arm_dma_free(struct device *dev, size_t size, void *cpu_addr,
-			   dma_addr_t handle, struct dma_attrs *attrs,
-			   bool is_coherent)
+void arm_dma_free(struct device *dev, size_t size, void *cpu_addr,
+		  dma_addr_t handle, struct dma_attrs *attrs)
 {
 	struct page *page = pfn_to_page(dma_to_pfn(dev, handle));
 
@@ -927,7 +845,7 @@ static void __arm_dma_free(struct device *dev, size_t size, void *cpu_addr,
 
 	size = PAGE_ALIGN(size);
 
-	if (is_coherent || nommu()) {
+	if (arch_is_coherent() || nommu()) {
 		__dma_free_buffer(page, size);
 	} else if (!IS_ENABLED(CONFIG_CMA)) {
 		__dma_free_remap(cpu_addr, size, false);
@@ -941,33 +859,6 @@ static void __arm_dma_free(struct device *dev, size_t size, void *cpu_addr,
 		WARN_ON(irqs_disabled());
 		__free_from_contiguous(dev, page, cpu_addr, size);
 	}
-}
-
-void arm_dma_free(struct device *dev, size_t size, void *cpu_addr,
-		  dma_addr_t handle, struct dma_attrs *attrs)
-{
-	__arm_dma_free(dev, size, cpu_addr, handle, attrs, false);
-}
-
-static void arm_coherent_dma_free(struct device *dev, size_t size, void *cpu_addr,
-				  dma_addr_t handle, struct dma_attrs *attrs)
-{
-	__arm_dma_free(dev, size, cpu_addr, handle, attrs, true);
-}
-
-int arm_dma_get_sgtable(struct device *dev, struct sg_table *sgt,
-		 void *cpu_addr, dma_addr_t handle, size_t size,
-		 struct dma_attrs *attrs)
-{
-	struct page *page = pfn_to_page(dma_to_pfn(dev, handle));
-	int ret;
-
-	ret = sg_alloc_table(sgt, 1, GFP_KERNEL);
-	if (unlikely(ret))
-		return ret;
-
-	sg_set_page(sgt->sgl, page, PAGE_ALIGN(size), 0);
-	return 0;
 }
 
 static void dma_cache_maint_page(struct page *page, unsigned long offset,
@@ -1166,7 +1057,9 @@ void arm_dma_sync_sg_for_device(struct device *dev, struct scatterlist *sg,
  */
 int dma_supported(struct device *dev, u64 mask)
 {
-	return __dma_supported(dev, mask, false);
+	if (mask < (u64)arm_dma_limit)
+		return 0;
+	return 1;
 }
 EXPORT_SYMBOL(dma_supported);
 
@@ -1238,8 +1131,7 @@ static inline void __free_iova(struct dma_iommu_mapping *mapping,
 	spin_unlock_irqrestore(&mapping->lock, flags);
 }
 
-static struct page **__iommu_alloc_buffer(struct device *dev, size_t size,
-					  gfp_t gfp, struct dma_attrs *attrs)
+static struct page **__iommu_alloc_buffer(struct device *dev, size_t size, gfp_t gfp)
 {
 	struct page **pages;
 	int count = size >> PAGE_SHIFT;
@@ -1253,46 +1145,20 @@ static struct page **__iommu_alloc_buffer(struct device *dev, size_t size,
 	if (!pages)
 		return NULL;
 
-	if (dma_get_attr(DMA_ATTR_FORCE_CONTIGUOUS, attrs))
-	{
-		unsigned long order = get_order(size);
-		struct page *page;
-		unsigned long pfn;
-
-		pfn = dma_alloc_from_contiguous(dev, count, order);
-		if (!pfn)
-			goto error;
-
-		pfn = pfn_to_page(pfn);
-
-		__dma_clear_buffer(page, size);
-
-		for (i = 0; i < count; i++)
-			pages[i] = page + i;
-
-		return pages;
-	}
-
-	/*
-	 * IOMMU can map any pages, so himem can also be used here
-	 */
-	gfp |= __GFP_NOWARN | __GFP_HIGHMEM;
-
 	while (count) {
 		int j, order = __fls(count);
 
-		pages[i] = alloc_pages(gfp, order);
+		pages[i] = alloc_pages(gfp | __GFP_NOWARN, order);
 		while (!pages[i] && order)
-			pages[i] = alloc_pages(gfp, --order);
+			pages[i] = alloc_pages(gfp | __GFP_NOWARN, --order);
 		if (!pages[i])
 			goto error;
 
-		if (order) {
+		if (order)
 			split_page(pages[i], order);
-			j = 1 << order;
-			while (--j)
-				pages[i + j] = pages[i] + j;
-		}
+		j = 1 << order;
+		while (--j)
+			pages[i + j] = pages[i] + j;
 
 		__dma_clear_buffer(pages[i], PAGE_SIZE << order);
 		i += 1 << order;
@@ -1301,32 +1167,25 @@ static struct page **__iommu_alloc_buffer(struct device *dev, size_t size,
 
 	return pages;
 error:
-	while (i--)
+	while (--i)
 		if (pages[i])
 			__free_pages(pages[i], 0);
-	if (array_size <= PAGE_SIZE)
+	if (array_size < PAGE_SIZE)
 		kfree(pages);
 	else
 		vfree(pages);
 	return NULL;
 }
 
-static int __iommu_free_buffer(struct device *dev, struct page **pages,
-			       size_t size, struct dma_attrs *attrs)
+static int __iommu_free_buffer(struct device *dev, struct page **pages, size_t size)
 {
 	int count = size >> PAGE_SHIFT;
 	int array_size = count * sizeof(struct page *);
 	int i;
-
-	if (dma_get_attr(DMA_ATTR_FORCE_CONTIGUOUS, attrs)) {
-		dma_release_from_contiguous(dev, page_to_pfn(pages[0]), count);
-	} else {
-		for (i = 0; i < count; i++)
-			if (pages[i])
-				__free_pages(pages[i], 0);
-	}
-
-	if (array_size <= PAGE_SIZE)
+	for (i = 0; i < count; i++)
+		if (pages[i])
+			__free_pages(pages[i], 0);
+	if (array_size < PAGE_SIZE)
 		kfree(pages);
 	else
 		vfree(pages);
@@ -1467,10 +1326,7 @@ static void *arm_iommu_alloc_attrs(struct device *dev, size_t size,
 	*handle = DMA_ERROR_CODE;
 	size = PAGE_ALIGN(size);
 
-	if (gfp & GFP_ATOMIC)
-		return __iommu_alloc_atomic(dev, size, handle);
-
-	pages = __iommu_alloc_buffer(dev, size, gfp, attrs);
+	pages = __iommu_alloc_buffer(dev, size, gfp);
 	if (!pages)
 		return NULL;
 
@@ -1487,7 +1343,7 @@ static void *arm_iommu_alloc_attrs(struct device *dev, size_t size,
 err_mapping:
 	__iommu_remove_mapping(dev, *handle, size);
 err_buffer:
-	__iommu_free_buffer(dev, pages, size, attrs);
+	__iommu_free_buffer(dev, pages, size);
 	return NULL;
 }
 
@@ -1547,8 +1403,7 @@ void arm_iommu_free_attrs(struct device *dev, size_t size, void *cpu_addr,
  */
 static int __map_sg_chunk(struct device *dev, struct scatterlist *sg,
 			  size_t size, dma_addr_t *handle,
-			  enum dma_data_direction dir, struct dma_attrs *attrs,
-			  bool is_coherent)
+			  enum dma_data_direction dir)
 {
 	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
 	dma_addr_t iova, iova_base;
@@ -1567,8 +1422,7 @@ static int __map_sg_chunk(struct device *dev, struct scatterlist *sg,
 		phys_addr_t phys = page_to_phys(sg_page(s));
 		unsigned int len = PAGE_ALIGN(s->offset + s->length);
 
-		if (!is_coherent &&
-			!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+		if (!arch_is_coherent())
 			__dma_page_cpu_to_dev(sg_page(s), s->offset, s->length, dir);
 
 		ret = iommu_map(mapping->domain, iova, phys, len, 0);
@@ -1586,9 +1440,20 @@ fail:
 	return ret;
 }
 
-static int __iommu_map_sg(struct device *dev, struct scatterlist *sg, int nents,
-		     enum dma_data_direction dir, struct dma_attrs *attrs,
-		     bool is_coherent)
+/**
+ * arm_iommu_map_sg - map a set of SG buffers for streaming mode DMA
+ * @dev: valid struct device pointer
+ * @sg: list of buffers
+ * @nents: number of buffers to map
+ * @dir: DMA transfer direction
+ *
+ * Map a set of buffers described by scatterlist in streaming mode for DMA.
+ * The scatter gather list elements are merged together (if possible) and
+ * tagged with the appropriate dma address and length. They are obtained via
+ * sg_dma_{address,length}.
+ */
+int arm_iommu_map_sg(struct device *dev, struct scatterlist *sg, int nents,
+		     enum dma_data_direction dir, struct dma_attrs *attrs)
 {
 	struct scatterlist *s = sg, *dma = sg, *start = sg;
 	int i, count = 0;
@@ -1604,7 +1469,7 @@ static int __iommu_map_sg(struct device *dev, struct scatterlist *sg, int nents,
 
 		if (s->offset || (size & ~PAGE_MASK) || size + s->length > max) {
 			if (__map_sg_chunk(dev, start, size, &dma->dma_address,
-			    dir, attrs, is_coherent) < 0)
+			    dir) < 0)
 				goto bad_mapping;
 
 			dma->dma_address += offset;
@@ -1617,8 +1482,7 @@ static int __iommu_map_sg(struct device *dev, struct scatterlist *sg, int nents,
 		}
 		size += s->length;
 	}
-	if (__map_sg_chunk(dev, start, size, &dma->dma_address, dir, attrs,
-		is_coherent) < 0)
+	if (__map_sg_chunk(dev, start, size, &dma->dma_address, dir) < 0)
 		goto bad_mapping;
 
 	dma->dma_address += offset;
@@ -1630,76 +1494,6 @@ bad_mapping:
 	for_each_sg(sg, s, count, i)
 		__iommu_remove_mapping(dev, sg_dma_address(s), sg_dma_len(s));
 	return 0;
-}
-
-/**
- * arm_coherent_iommu_map_sg - map a set of SG buffers for streaming mode DMA
- * @dev: valid struct device pointer
- * @sg: list of buffers
- * @nents: number of buffers to map
- * @dir: DMA transfer direction
- *
- * Map a set of i/o coherent buffers described by scatterlist in streaming
- * mode for DMA. The scatter gather list elements are merged together (if
- * possible) and tagged with the appropriate dma address and length. They are
- * obtained via sg_dma_{address,length}.
- */
-int arm_coherent_iommu_map_sg(struct device *dev, struct scatterlist *sg,
-		int nents, enum dma_data_direction dir, struct dma_attrs *attrs)
-{
-	return __iommu_map_sg(dev, sg, nents, dir, attrs, true);
-}
-
-/**
- * arm_iommu_map_sg - map a set of SG buffers for streaming mode DMA
- * @dev: valid struct device pointer
- * @sg: list of buffers
- * @nents: number of buffers to map
- * @dir: DMA transfer direction
- *
- * Map a set of buffers described by scatterlist in streaming mode for DMA.
- * The scatter gather list elements are merged together (if possible) and
- * tagged with the appropriate dma address and length. They are obtained via
- * sg_dma_{address,length}.
- */
-int arm_iommu_map_sg(struct device *dev, struct scatterlist *sg,
-		int nents, enum dma_data_direction dir, struct dma_attrs *attrs)
-{
-	return __iommu_map_sg(dev, sg, nents, dir, attrs, false);
-}
-
-static void __iommu_unmap_sg(struct device *dev, struct scatterlist *sg,
-		int nents, enum dma_data_direction dir, struct dma_attrs *attrs,
-		bool is_coherent)
-{
-	struct scatterlist *s;
-	int i;
-
-	for_each_sg(sg, s, nents, i) {
-		if (sg_dma_len(s))
-			__iommu_remove_mapping(dev, sg_dma_address(s),
-					       sg_dma_len(s));
-		if (!is_coherent &&
-		    !dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
-			__dma_page_dev_to_cpu(sg_page(s), s->offset,
-					      s->length, dir);
-	}
-}
-
-/**
- * arm_coherent_iommu_unmap_sg - unmap a set of SG buffers mapped by dma_map_sg
- * @dev: valid struct device pointer
- * @sg: list of buffers
- * @nents: number of buffers to unmap (same as was passed to dma_map_sg)
- * @dir: DMA transfer direction (same as was passed to dma_map_sg)
- *
- * Unmap a set of streaming mode DMA translations.  Again, CPU access
- * rules concerning calls here are the same as for dma_unmap_single().
- */
-void arm_coherent_iommu_unmap_sg(struct device *dev, struct scatterlist *sg,
-		int nents, enum dma_data_direction dir, struct dma_attrs *attrs)
-{
-	__iommu_unmap_sg(dev, sg, nents, dir, attrs, true);
 }
 
 /**
@@ -1715,7 +1509,17 @@ void arm_coherent_iommu_unmap_sg(struct device *dev, struct scatterlist *sg,
 void arm_iommu_unmap_sg(struct device *dev, struct scatterlist *sg, int nents,
 			enum dma_data_direction dir, struct dma_attrs *attrs)
 {
-	__iommu_unmap_sg(dev, sg, nents, dir, attrs, false);
+	struct scatterlist *s;
+	int i;
+
+	for_each_sg(sg, s, nents, i) {
+		if (sg_dma_len(s))
+			__iommu_remove_mapping(dev, sg_dma_address(s),
+					       sg_dma_len(s));
+		if (!arch_is_coherent())
+			__dma_page_dev_to_cpu(sg_page(s), s->offset,
+					      s->length, dir);
+	}
 }
 
 /**
@@ -1732,7 +1536,8 @@ void arm_iommu_sync_sg_for_cpu(struct device *dev, struct scatterlist *sg,
 	int i;
 
 	for_each_sg(sg, s, nents, i)
-		__dma_page_dev_to_cpu(sg_page(s), s->offset, s->length, dir);
+		if (!arch_is_coherent())
+			__dma_page_dev_to_cpu(sg_page(s), s->offset, s->length, dir);
 
 }
 
@@ -1750,41 +1555,10 @@ void arm_iommu_sync_sg_for_device(struct device *dev, struct scatterlist *sg,
 	int i;
 
 	for_each_sg(sg, s, nents, i)
-		__dma_page_cpu_to_dev(sg_page(s), s->offset, s->length, dir);
+		if (!arch_is_coherent())
+			__dma_page_cpu_to_dev(sg_page(s), s->offset, s->length, dir);
 }
 
-
-/**
- * arm_coherent_iommu_map_page
- * @dev: valid struct device pointer
- * @page: page that buffer resides in
- * @offset: offset into page for start of buffer
- * @size: size of buffer to map
- * @dir: DMA transfer direction
- *
- * Coherent IOMMU aware version of arm_dma_map_page()
- */
-static dma_addr_t arm_coherent_iommu_map_page(struct device *dev, struct page *page,
-	     unsigned long offset, size_t size, enum dma_data_direction dir,
-	     struct dma_attrs *attrs)
-{
-	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
-	dma_addr_t dma_addr;
-	int ret, len = PAGE_ALIGN(size + offset);
-
-	dma_addr = __alloc_iova(mapping, len);
-	if (dma_addr == DMA_ERROR_CODE)
-		return dma_addr;
-
-	ret = iommu_map(mapping->domain, dma_addr, page_to_phys(page), len, 0);
-	if (ret < 0)
-		goto fail;
-
-	return dma_addr + offset;
-fail:
-	__free_iova(mapping, dma_addr, len);
-	return DMA_ERROR_CODE;
-}
 
 /**
  * arm_iommu_map_page
@@ -1800,35 +1574,25 @@ static dma_addr_t arm_iommu_map_page(struct device *dev, struct page *page,
 	     unsigned long offset, size_t size, enum dma_data_direction dir,
 	     struct dma_attrs *attrs)
 {
-	if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
+	dma_addr_t dma_addr;
+	int ret, len = PAGE_ALIGN(size + offset);
+
+	if (!arch_is_coherent())
 		__dma_page_cpu_to_dev(page, offset, size, dir);
 
-	return arm_coherent_iommu_map_page(dev, page, offset, size, dir, attrs);
-}
+	dma_addr = __alloc_iova(mapping, len);
+	if (dma_addr == DMA_ERROR_CODE)
+		return dma_addr;
 
-/**
- * arm_coherent_iommu_unmap_page
- * @dev: valid struct device pointer
- * @handle: DMA address of buffer
- * @size: size of buffer (same as passed to dma_map_page)
- * @dir: DMA transfer direction (same as passed to dma_map_page)
- *
- * Coherent IOMMU aware version of arm_dma_unmap_page()
- */
-static void arm_coherent_iommu_unmap_page(struct device *dev, dma_addr_t handle,
-		size_t size, enum dma_data_direction dir,
-		struct dma_attrs *attrs)
-{
-	struct dma_iommu_mapping *mapping = dev->archdata.mapping;
-	dma_addr_t iova = handle & PAGE_MASK;
-	int offset = handle & ~PAGE_MASK;
-	int len = PAGE_ALIGN(size + offset);
+	ret = iommu_map(mapping->domain, dma_addr, page_to_phys(page), len, 0);
+	if (ret < 0)
+		goto fail;
 
-	if (!iova)
-		return;
-
-	iommu_unmap(mapping->domain, iova, len);
-	__free_iova(mapping, iova, len);
+	return dma_addr + offset;
+fail:
+	__free_iova(mapping, dma_addr, len);
+	return DMA_ERROR_CODE;
 }
 
 /**
@@ -1853,7 +1617,7 @@ static void arm_iommu_unmap_page(struct device *dev, dma_addr_t handle,
 	if (!iova)
 		return;
 
-	if (!dma_get_attr(DMA_ATTR_SKIP_CPU_SYNC, attrs))
+	if (!arch_is_coherent())
 		__dma_page_dev_to_cpu(page, offset, size, dir);
 
 	iommu_unmap(mapping->domain, iova, len);
@@ -1871,7 +1635,8 @@ static void arm_iommu_sync_single_for_cpu(struct device *dev,
 	if (!iova)
 		return;
 
-	__dma_page_dev_to_cpu(page, offset, size, dir);
+	if (!arch_is_coherent())
+		__dma_page_dev_to_cpu(page, offset, size, dir);
 }
 
 static void arm_iommu_sync_single_for_device(struct device *dev,
@@ -1892,7 +1657,6 @@ struct dma_map_ops iommu_ops = {
 	.alloc		= arm_iommu_alloc_attrs,
 	.free		= arm_iommu_free_attrs,
 	.mmap		= arm_iommu_mmap_attrs,
-	.get_sgtable	= arm_iommu_get_sgtable,
 
 	.map_page		= arm_iommu_map_page,
 	.unmap_page		= arm_iommu_unmap_page,
@@ -1903,23 +1667,6 @@ struct dma_map_ops iommu_ops = {
 	.unmap_sg		= arm_iommu_unmap_sg,
 	.sync_sg_for_cpu	= arm_iommu_sync_sg_for_cpu,
 	.sync_sg_for_device	= arm_iommu_sync_sg_for_device,
-
-	.set_dma_mask		= arm_dma_set_mask,
-};
-
-struct dma_map_ops iommu_coherent_ops = {
-	.alloc		= arm_iommu_alloc_attrs,
-	.free		= arm_iommu_free_attrs,
-	.mmap		= arm_iommu_mmap_attrs,
-	.get_sgtable	= arm_iommu_get_sgtable,
-
-	.map_page	= arm_coherent_iommu_map_page,
-	.unmap_page	= arm_coherent_iommu_unmap_page,
-
-	.map_sg		= arm_coherent_iommu_map_sg,
-	.unmap_sg	= arm_coherent_iommu_unmap_sg,
-
-	.set_dma_mask		= arm_dma_set_mask,
 };
 
 /**
@@ -1974,7 +1721,6 @@ err2:
 err:
 	return ERR_PTR(err);
 }
-EXPORT_SYMBOL_GPL(arm_iommu_create_mapping);
 
 static void release_iommu_mapping(struct kref *kref)
 {
@@ -1991,7 +1737,6 @@ void arm_iommu_release_mapping(struct dma_iommu_mapping *mapping)
 	if (mapping)
 		kref_put(&mapping->kref, release_iommu_mapping);
 }
-EXPORT_SYMBOL_GPL(arm_iommu_release_mapping);
 
 /**
  * arm_iommu_attach_device
@@ -2017,35 +1762,8 @@ int arm_iommu_attach_device(struct device *dev,
 	dev->archdata.mapping = mapping;
 	set_dma_ops(dev, &iommu_ops);
 
-	pr_debug("Attached IOMMU controller to %s device.\n", dev_name(dev));
+	pr_info("Attached IOMMU controller to %s device.\n", dev_name(dev));
 	return 0;
 }
-EXPORT_SYMBOL_GPL(arm_iommu_attach_device);
-
-/**
- * arm_iommu_detach_device
- * @dev: valid struct device pointer
- *
- * Detaches the provided device from a previously attached map.
- * This voids the dma operations (dma_map_ops pointer)
- */
-void arm_iommu_detach_device(struct device *dev)
-{
-	struct dma_iommu_mapping *mapping;
-
-	mapping = to_dma_iommu_mapping(dev);
-	if (!mapping) {
-		dev_warn(dev, "Not attached\n");
-		return;
-	}
-
-	iommu_detach_device(mapping->domain, dev);
-	kref_put(&mapping->kref, release_iommu_mapping);
-	mapping = NULL;
-	set_dma_ops(dev, NULL);
-
-	pr_debug("Detached IOMMU controller from %s device.\n", dev_name(dev));
-}
-EXPORT_SYMBOL_GPL(arm_iommu_detach_device);
 
 #endif
