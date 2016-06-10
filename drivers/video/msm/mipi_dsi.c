@@ -151,11 +151,9 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	mipi_dsi_unprepare_ahb_clocks();
 
 	usleep(5000);
-#if  defined (CONFIG_MIPI_DSI_RESET_LP11)
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
 		mipi_dsi_pdata->active_reset(0); /* low */
-#endif	
 
 	usleep(2000); /*1ms delay(minimum) required between reset low and AVDD off*/
 #if defined(CONFIG_SUPPORT_SECOND_POWER)
@@ -195,7 +193,7 @@ static int mipi_dsi_on(struct platform_device *pdev)
 
 	pr_debug("%s+:\n", __func__);
 
-#if defined(CONFIG_MIPI_SAMSUNG_ESD_REFRESH) || defined(CONFIG_ESD_ERR_FG_RECOVERY)
+#if defined(CONFIG_ESD_ERR_FG_RECOVERY)
 	pdev_for_esd = pdev;
 #endif
 #if defined (CONFIG_FB_MSM_MIPI_SAMSUNG_OLED_VIDEO_QHD_PT)
@@ -232,11 +230,8 @@ static int mipi_dsi_on(struct platform_device *pdev)
 		mipi_dsi_pdata->panel_power_save(1);
 #endif
 
-#if !defined(CONFIG_SEC_PRODUCT_8930) && !defined(CONFIG_SEC_PRODUCT_8960)
 	if (system_rev == 6)
 		mdelay(500);
-#endif
-
 
 	if (mipi_dsi_pdata && mipi_dsi_pdata->dsi_power_save)
 		mipi_dsi_pdata->dsi_power_save(1);
@@ -352,7 +347,6 @@ static int mipi_dsi_on(struct platform_device *pdev)
 	}
 #else
 	msleep(10);
-#if defined (CONFIG_MIPI_DSI_RESET_LP11)
 
 	/* LP11 */
 	tmp = MIPI_INP(MIPI_DSI_BASE + 0xA8);
@@ -375,6 +369,8 @@ static int mipi_dsi_on(struct platform_device *pdev)
 #endif
 	/* always high */
 	if (mipi->force_clk_lane_hs) {
+		u32 tmp;
+
 		tmp = MIPI_INP(MIPI_DSI_BASE + 0xA8);
 		tmp |= (1<<28);
 		MIPI_OUTP(MIPI_DSI_BASE + 0xA8, tmp);
@@ -610,21 +606,17 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 
 		if (mipi_dsi_clk_init(pdev))
 			return -EPERM;
-		mipi_dsi_prepare_clocks();
 
 		if (mipi_dsi_pdata->splash_is_enabled &&
 			!mipi_dsi_pdata->splash_is_enabled()) {
-			mipi_dsi_prepare_clocks();
+			mipi_dsi_prepare_ahb_clocks();
 			mipi_dsi_ahb_ctrl(1);
 			MIPI_OUTP(MIPI_DSI_BASE + 0x118, 0);
 			MIPI_OUTP(MIPI_DSI_BASE + 0x0, 0);
 			MIPI_OUTP(MIPI_DSI_BASE + 0x200, 0);
 			mipi_dsi_ahb_ctrl(0);
-			mipi_dsi_unprepare_clocks();
+			mipi_dsi_unprepare_ahb_clocks();
 		}
-#if defined (CONFIG_SEC_PRODUCT_8960) || defined(CONFIG_SEC_PRODUCT_8930) 
-		mipi_dsi_unprepare_clocks(); // unprepare the clocks to balance clock calls
-#endif
 		mipi_dsi_resource_initialized = 1;
 
 		return 0;
@@ -792,6 +784,9 @@ static int mipi_dsi_probe(struct platform_device *pdev)
 #endif
 
 	esc_byte_ratio = pinfo->mipi.esc_byte_ratio;
+
+	if (!mfd->cont_splash_done)
+		cont_splash_clk_ctrl(1);
 
 return 0;
 
