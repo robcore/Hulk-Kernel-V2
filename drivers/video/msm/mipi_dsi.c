@@ -131,7 +131,7 @@ static int mipi_dsi_off(struct platform_device *pdev)
 	ret = panel_next_off(pdev);
 
 	spin_lock_bh(&dsi_clk_lock);
-	
+
 	mipi_dsi_clk_disable();
 
 	/* disbale dsi engine */
@@ -362,10 +362,9 @@ static int mipi_dsi_on(struct platform_device *pdev)
 #endif
 #if defined(CONFIG_MACH_LT02_SPR) || defined(CONFIG_MACH_LT02_ATT) || defined(CONFIG_MACH_LT02_TMO)
 	if(system_rev)
-		ret = panel_next_on(pdev);	
+		ret = panel_next_on(pdev);
 #elif defined(CONFIG_MACH_LT02_CHN_CTC)
         ret = panel_next_on(pdev);
-#endif
 #endif
 	/* always high */
 	if (mipi->force_clk_lane_hs) {
@@ -381,7 +380,7 @@ static int mipi_dsi_on(struct platform_device *pdev)
 		mutex_lock(&mfd->dma->ov_mutex);
 	else
 		down(&mfd->dma->mutex);
-		
+
 #if !defined(CONFIG_MACH_LT02_CHN_CTC)
 #if defined(CONFIG_MACH_LT02_SPR) || defined(CONFIG_MACH_LT02_ATT) || defined(CONFIG_MACH_LT02_TMO)
 	if(!system_rev)
@@ -471,7 +470,7 @@ void esd_recovery(void)
 			mutex_lock(&power_state_chagne);
 
 			panel_next_off(pdev_for_esd);
-			
+
 			if (mipi_dsi_pdata && mipi_dsi_pdata->active_reset)
 				mipi_dsi_pdata->active_reset(0); /* low */
 #if defined(CONFIG_SUPPORT_SECOND_POWER)
