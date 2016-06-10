@@ -2836,19 +2836,6 @@ int _mmc_detect_card_removed(struct mmc_host *host)
 		return 1;
 
 	ret = host->bus_ops->alive(host);
-
-	/*
-	 * Card detect status and alive check may be out of sync if card is
-	 * removed slowly, when card detect switch changes while card/slot
-	 * pads are still contacted in hardware (refer to "SD Card Mechanical
-	 * Addendum, Appendix C: Card Detection Switch"). So reschedule a
-	 * detect work 200ms later for this case.
-	 */
-	if (!ret && host->ops->get_cd && !host->ops->get_cd(host)) {
-		mmc_detect_change(host, msecs_to_jiffies(200));
-		pr_debug("%s: card removed too slowly\n", mmc_hostname(host));
-	}
-
 	if (ret) {
 		mmc_card_set_removed(host->card);
 		pr_debug("%s: card remove detected\n", mmc_hostname(host));
@@ -2939,12 +2926,8 @@ void mmc_rescan(struct work_struct *work)
 	 */
 	mmc_bus_put(host);
 
-	if (host->ops->get_cd && host->ops->get_cd(host) == 0) {
-		mmc_claim_host(host);
-		mmc_power_off(host);
-		mmc_release_host(host);
+	if (host->ops->get_cd && host->ops->get_cd(host) == 0)
 		goto out;
-	}
 
 	ST_LOG("<%s> %s insertion detected",__func__,host->class_dev.kobj.name);
 
