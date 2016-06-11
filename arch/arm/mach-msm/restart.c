@@ -284,17 +284,6 @@ void msm_restart(char mode, const char *cmd)
 	unsigned long value;
 
 #ifndef CONFIG_SEC_DEBUG
-#ifdef CONFIG_MSM_DLOAD_MODE
-
-	/* This looks like a normal reboot at this point. */
-	set_dload_mode(0);
-
-	/* Write download mode flags if we're panic'ing */
-	set_dload_mode(in_panic);
-
-	/* Write download mode flags if restart_mode says so */
-	if (restart_mode == RESTART_DLOAD) {
-		set_dload_mode(1);
 #ifdef CONFIG_LGE_CRASH_HANDLER
 		writel(0x6d63c421, restart_reason);
 		goto reset;
@@ -305,24 +294,7 @@ void msm_restart(char mode, const char *cmd)
 	if (!download_mode)
 		set_dload_mode(0);
 #endif
-#endif
 
-#ifdef CONFIG_SEC_DEBUG_LOW_LOG
-#ifdef CONFIG_MSM_DLOAD_MODE
-#ifdef CONFIG_SEC_DEBUG
-	if (sec_debug_is_enabled()
-	&& ((restart_mode == RESTART_DLOAD) || in_panic))
-		set_dload_mode(1);
-	else
-		set_dload_mode(0);
-#else
-	set_dload_mode(0);
-	set_dload_mode(in_panic);
-	if (restart_mode == RESTART_DLOAD)
-		set_dload_mode(1);
-#endif
-#endif
-#endif
 	printk(KERN_NOTICE "Going down for restart now\n");
 
 	pm8xxx_reset_pwr_off(1);
