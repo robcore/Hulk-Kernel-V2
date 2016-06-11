@@ -357,17 +357,14 @@ CC		= $(srctree)/scripts/gcc-wrapper.py $(REAL_CC)
 CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 		  -Wbitwise -Wno-return-void $(CF)
 KERNEL_FLAGS	= -mtune=cortex-a15 -marm \
-		  -mfpu=neon-vfpv4 -mvectorize-with-neon-quad \
-		  -fgcse-after-reload -fgcse-sm -fgcse-las \
-		  -ftree-loop-im -ftree-loop-ivcanon \
-		  -fivopts -ftree-vectorize -fmodulo-sched \
-		  -ffast-math
-CFLAGS_MODULE   = -fno-pic -mcpu=cortex-a15 -mtune=cortex-a15 -mfpu=neon-vfpv4
+		  -mfpu=neon-vfpv4 -mvectorize-with-neon-quad
+
+CFLAGS_MODULE   = -mcpu=cortex-a15 -mtune=cortex-a15 -mfpu=neon-vfpv4
 AFLAGS_MODULE   =
 LDFLAGS_MODULE  =
 CFLAGS_KERNEL	= -mcpu=cortex-a15 -mtune=cortex-a15 -mfpu=neon-vfpv4
 AFLAGS_KERNEL	=
-CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage
+CFLAGS_GCOV	= -fprofile-arcs -ftest-coverage -fprofile-values
 
 
 # Use LINUXINCLUDE when you must reference the include/ directory.
@@ -380,7 +377,7 @@ LINUXINCLUDE    := -I$(srctree)/arch/$(hdr-arch)/include \
 KBUILD_CPPFLAGS := -D__KERNEL__
 KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -Wno-unused-variable -Wno-maybe-uninitialized \
 		   -fno-strict-aliasing -fno-common -mtune="cortex-a15" -mfpu=neon-vfpv4 \
-		   -Werror-implicit-function-declaration -std=gnu89 -fno-pic \
+		   -Werror-implicit-function-declaration -std=gnu89 \
 		   -Wno-format-security -Wno-unused-function -Wno-array-bounds -Wno-logical-not-parentheses \
 		   -fno-delete-null-pointer-checks -Wno-cpp -Wno-declaration-after-statement -fno-var-tracking-assignments -Wno-sizeof-pointer-memaccess -Wno-aggressive-loop-optimizations -Wno-sequence-point
 KBUILD_AFLAGS_KERNEL :=
