@@ -22,6 +22,7 @@
 #include <linux/clk/msm-clk-provider.h>
 #include <asm/clkdev.h>
 #include <mach/kgsl.h>
+#include <linux/android_pmem.h>
 #include <mach/irqs-8960.h>
 #include <mach/dma.h>
 #include <linux/dma-mapping.h>
