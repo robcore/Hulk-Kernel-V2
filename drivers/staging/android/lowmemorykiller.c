@@ -512,11 +512,6 @@ static int android_oom_handler(struct notifier_block *nb,
 			task_unlock(p);
 			continue;
 		}
-		if (fatal_signal_pending(p)) {
-			lowmem_print(2, "skip slow dying process %d\n", p->pid);
-			task_unlock(p);
-			continue;
-		}
 		tasksize = get_mm_rss(p->mm);
 		task_unlock(p);
 		if (tasksize <= 0)
@@ -724,7 +719,6 @@ void add_2_adj_tree(struct task_struct *task)
 	struct rb_node *parent = NULL;
 	struct task_struct *task_entry;
 	s64 key = task->signal->oom_score_adj;
-
 	/*
 	 * Find the right place in the rbtree:
 	 */
