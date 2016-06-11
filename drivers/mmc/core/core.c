@@ -80,7 +80,7 @@ static struct workqueue_struct *workqueue;
  * performance cost, and for other reasons may not always be desired.
  * So we allow it it to be disabled.
  */
-bool use_spi_crc = 1;
+bool use_spi_crc = 0;
 EXPORT_SYMBOL(use_spi_crc);
 module_param_named(crc_check, use_spi_crc, bool, 0664);
 MODULE_PARM_DESC(

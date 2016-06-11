@@ -13,7 +13,6 @@ obj-$(CONFIG_CPU_FREQ_GOV_BADASS)		+= cpufreq_badass.o
 obj-$(CONFIG_CPU_FREQ_GOV_CONSERVATIVE)		+= cpufreq_conservative.o
 obj-$(CONFIG_CPU_FREQ_GOV_DANCEDANCE)		+= cpufreq_dancedance.o
 obj-$(CONFIG_CPU_FREQ_GOV_INTERACTIVE)		+= cpufreq_interactive.o
-obj-$(CONFIG_CPU_FREQ_GOV_INTELLIDEMAND)	+= cpufreq_intellidemand.o
 obj-$(CONFIG_CPU_FREQ_GOV_NIGHTMARE)		+= cpufreq_nightmare.o
 obj-$(CONFIG_CPU_FREQ_GOV_ZZMOOVE)		+= cpufreq_zzmoove.o
 obj-$(CONFIG_CPU_FREQ_GOV_ONDEMAND)		+= cpufreq_ondemand.o
@@ -44,6 +43,9 @@ obj-$(CONFIG_CPU_FREQ_GOV_TRIPNDROID)		+= cpufreq_tripndroid.o
 obj-$(CONFIG_CPU_FREQ_GOV_ELEMENTALX)		+= cpufreq_elementalx.o
 obj-$(CONFIG_CPU_FREQ_GOV_LAZY)			+= cpufreq_lazy.o
 obj-$(CONFIG_CPU_FREQ_GOV_UBERDEMAND)		+= cpufreq_uberdemand.o
+obj-$(CONFIG_CPU_FREQ_GOV_ELECTRODEMAND)	+= cpufreq_electrodemand.o
+obj-$(CONFIG_CPU_FREQ_GOV_ONDEMAND_X)	+= cpufreq_ondemand_x.o
+obj-$(CONFIG_CPU_FREQ_GOV_ELECTROACTIVE)	+= cpufreq_electroactive.o
 
 # CPUfreq cross-arch helpers
 obj-$(CONFIG_CPU_FREQ_TABLE)			+= freq_table.o
