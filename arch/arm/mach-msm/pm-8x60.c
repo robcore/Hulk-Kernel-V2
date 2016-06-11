@@ -56,9 +56,6 @@
 #include "pm-boot.h"
 #include <mach/event_timer.h>
 #include <linux/cpu_pm.h>
-#ifdef CONFIG_SEC_DEBUG
-#include <mach/sec_debug.h>
-#endif
 #include <linux/regulator/consumer.h>
 #include <mach/gpiomux.h>
 #include <linux/mfd/pm8xxx/pm8921.h>
@@ -577,13 +574,8 @@ static bool __ref msm_pm_spm_power_collapse(
 #ifdef CONFIG_VFP
 	vfp_pm_suspend();
 #endif
-#if defined(CONFIG_SEC_DEBUG)
-	secdbg_sched_msg("+pc(I:%d,R:%d)", from_idle, notify_rpm);
 	collapsed = msm_pm_l2x0_power_collapse();
-	secdbg_sched_msg("-pc(%d)", collapsed);
-#else
-	collapsed = msm_pm_l2x0_power_collapse();
-#endif
+
 	msm_pm_boot_config_after_pc(cpu);
 
 	if (collapsed) {
@@ -1003,7 +995,7 @@ int msm_pm_wait_cpu_shutdown(unsigned int cpu)
 		if (acc_sts & msm_pm_slp_sts[cpu].mask)
 			return 0;
 		udelay(100);
-		WARN(++timeout == 10, "CPU%u didn't collape within 1ms\n",
+		WARN(++timeout == 10, "CPU%u didn't collapse within 1ms\n",
 					cpu);
 	}
 
@@ -1120,7 +1112,6 @@ static int msm_pm_enter(suspend_state_t state)
 			pr_info("%s: swfi\n", __func__);
 		msm_pm_swfi();
 	}
-
 
 enter_exit:
 	if (MSM_PM_DEBUG_SUSPEND & msm_pm_debug_mask)
@@ -1316,7 +1307,6 @@ static int __init msm_pm_setup_saved_state(void)
 	unsigned long exit_phys;
 
 	/* Page table for cores to come back up safely. */
-
 	pc_pgd = pgd_alloc(&init_mm);
 	if (!pc_pgd)
 		return -ENOMEM;
