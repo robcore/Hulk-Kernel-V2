@@ -35,12 +35,5 @@ cp -p /media/root/robcore/android/Hulk-Kernel-V2/arch/arm/boot/dhd.ko $(pwd)/hul
 rm $(pwd)/split_img/boot.img-zImage;
 cp -p /media/root/robcore/android/Hulk-Kernel-V2/arch/arm/boot/boot.img-zImage $(pwd)/split_img/boot.img-zImage;
 rm image-new.img;
-cp -p /media/root/robcore/android/Hulk-Kernel-V2/ramdisk_fix_permissions.sh $(pwd)/ramdisk/ramdisk_fix_permissions.sh;
-chmod 755 $(pwd)/ramdisk/ramdisk_fix_permissions.sh;
-chown root:root $(pwd)/ramdisk/ramdisk_fix_permissions.sh;
-cd $(pwd)/ramdisk;
-sh ramdisk_fix_permissions.sh;
-rm ramdisk_fix_permissions.sh;
-cd ../
 sh repackimg.sh;
 cp -p image-new.img $(pwd)/hulk-new/boot.img
